@@ -1,0 +1,162 @@
+{
+  "name": "DMARC — Workflow 1: Scheduled Domain Scan",
+  "nodes": [
+    {
+      "id": "cron-trigger",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [0],
+              "triggerAtHour": 2,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "read-domains",
+      "name": "Read Domain List",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "parameters": {
+        "filePath": "={{ $env.DOMAINS_CONFIG_PATH || '/config/domains.json' }}"
+      }
+    },
+    {
+      "id": "parse-domains",
+      "name": "Parse Domain List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300],
+      "parameters": {
+        "jsCode": "const raw = $input.first().binary?.data?.data;\nconst text = Buffer.from(raw, 'base64').toString('utf8');\nconst config = JSON.parse(text);\nreturn config.domains.map(d => ({ json: d }));"
+      }
+    },
+    {
+      "id": "analyze-domain",
+      "name": "Analyze Domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DMARC_API_BASE_URL }}/api/v1/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ domain: $json.domain, options: { dkim_selector: $json.dkim_selector } }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "check-risk",
+      "name": "Check for High Risk",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "risk-check",
+              "leftValue": "={{ $json.risk_level }}",
+              "rightValue": "HIGH",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "send-alert",
+      "name": "Send High Risk Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `🚨 *DMARC Alert — HIGH RISK*\\n*Domain:* ${$json.domain}\\n*Risk:* ${$json.risk_level}\\n*Business Impact:* ${$json.business_impact}` }) }}"
+      }
+    },
+    {
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 400],
+      "parameters": {
+        "jsCode": "// Store result — replace with database write or file append as needed\nconsole.log('Scan complete:', $json.domain, $json.risk_level);\nreturn $input.all();"
+      }
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [[{ "node": "Read Domain List", "type": "main", "index": 0 }]]
+    },
+    "Read Domain List": {
+      "main": [[{ "node": "Parse Domain List", "type": "main", "index": 0 }]]
+    },
+    "Parse Domain List": {
+      "main": [[{ "node": "Analyze Domain", "type": "main", "index": 0 }]]
+    },
+    "Analyze Domain": {
+      "main": [[{ "node": "Check for High Risk", "type": "main", "index": 0 }]]
+    },
+    "Check for High Risk": {
+      "main": [
+        [{ "node": "Send High Risk Alert", "type": "main", "index": 0 }],
+        [{ "node": "Log Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send High Risk Alert": {
+      "main": [[{ "node": "Log Result", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": ["dmarc", "scheduled", "security"],
+  "notes": "Workflow 1: Scheduled Domain Scan.\n\nRequired env vars:\n  DMARC_API_BASE_URL — e.g. http://localhost:8000\n  DMARC_API_KEY      — Bearer token from config/.env\n  SLACK_WEBHOOK_URL  — Slack incoming webhook (optional, for alerts)\n  DOMAINS_CONFIG_PATH — path to config/domains.json\n\nDefault schedule: weekly, Sunday 02:00 UTC.\nAdjust the Schedule Trigger node to change frequency."
+}

@@ -1,0 +1,181 @@
+{
+  "name": "DMARC — Workflow 5: Batch Analysis",
+  "nodes": [
+    {
+      "id": "batch-webhook",
+      "name": "Batch Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "dmarc-batch",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dmarc-batch",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-batch",
+      "name": "Validate Batch Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst domains = body.domains || [];\nif (!Array.isArray(domains) || domains.length === 0) {\n  throw new Error('domains array is required and must not be empty');\n}\nif (domains.length > 100) {\n  throw new Error('Maximum 100 domains per batch');\n}\nconst options = body.options || {};\nreturn [{ json: { domains: domains.map(d => d.trim().toLowerCase()), options } }];"
+      }
+    },
+    {
+      "id": "submit-batch",
+      "name": "Submit Batch to API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DMARC_API_BASE_URL }}/api/v1/analyze/batch",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ domains: $json.domains, options: $json.options }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "wait-for-batch",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 30
+      }
+    },
+    {
+      "id": "poll-status",
+      "name": "Poll Batch Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DMARC_API_BASE_URL }}/api/v1/batch/{{ $('Submit Batch to API').item.json.batch_id }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      }
+    },
+    {
+      "id": "check-complete",
+      "name": "Batch Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "processing",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "summarize-results",
+      "name": "Summarize Batch Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 200],
+      "parameters": {
+        "jsCode": "const batch = $input.first().json;\nconst results = batch.results || [];\n\nconst summary = {\n  batch_id: batch.batch_id,\n  total: batch.total,\n  completed: batch.completed,\n  failed: batch.failed,\n  high_risk: results.filter(r => r.risk_level === 'HIGH').map(r => r.domain),\n  medium_risk: results.filter(r => r.risk_level === 'MEDIUM').map(r => r.domain),\n  low_risk: results.filter(r => r.risk_level === 'LOW').map(r => r.domain),\n  failed_domains: results.filter(r => r.status === 'failed').map(r => r.domain),\n  completed_at: batch.completed_at,\n};\n\nreturn [{ json: summary }];"
+      }
+    },
+    {
+      "id": "notify-requester",
+      "name": "Notify via Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `📊 *DMARC Batch Analysis Complete*\\n*Batch ID:* ${$json.batch_id}\\n*Total:* ${$json.total} domains\\n*High Risk:* ${$json.high_risk.length} (${$json.high_risk.join(', ') || 'none'})\\n*Medium Risk:* ${$json.medium_risk.length}\\n*Low Risk:* ${$json.low_risk.length}\\n*Failed:* ${$json.failed_domains.length}` }) }}"
+      }
+    },
+    {
+      "id": "batch-webhook-response",
+      "name": "Batch Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1300, 450],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ batch_id: $('Submit Batch to API').item.json.batch_id, status: 'accepted', total_domains: $('Validate Batch Request').item.json.domains.length }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Batch Webhook": {
+      "main": [[{ "node": "Validate Batch Request", "type": "main", "index": 0 }]]
+    },
+    "Validate Batch Request": {
+      "main": [
+        [{ "node": "Submit Batch to API", "type": "main", "index": 0 }],
+        [{ "node": "Batch Webhook Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Submit Batch to API": {
+      "main": [[{ "node": "Wait 30s", "type": "main", "index": 0 }]]
+    },
+    "Wait 30s": {
+      "main": [[{ "node": "Poll Batch Status", "type": "main", "index": 0 }]]
+    },
+    "Poll Batch Status": {
+      "main": [[{ "node": "Batch Complete?", "type": "main", "index": 0 }]]
+    },
+    "Batch Complete?": {
+      "main": [
+        [{ "node": "Summarize Batch Results", "type": "main", "index": 0 }],
+        [{ "node": "Wait 30s", "type": "main", "index": 0 }]
+      ]
+    },
+    "Summarize Batch Results": {
+      "main": [[{ "node": "Notify via Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["dmarc", "batch", "msp"],
+  "notes": "Workflow 5: Batch Analysis.\n\nAccepts a list of domains via webhook, submits a batch job to the API,\npolls until complete, then sends a Slack summary.\n\nWebhook POST /webhook/dmarc-batch:\n  { \"domains\": [\"example1.com\", \"example2.com\"], \"options\": {} }\n\nDesigned for MSP onboarding and portfolio-level assessments.\nPoll interval: 30 seconds. For large batches (50+ domains), increase Wait node.\n\nRequired env vars:\n  DMARC_API_BASE_URL, DMARC_API_KEY, SLACK_WEBHOOK_URL"
+}

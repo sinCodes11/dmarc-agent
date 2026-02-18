@@ -1,0 +1,264 @@
+{
+  "name": "DMARC: 05 Batch Analysis",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "description": "Webhook-triggered batch analysis of multiple domains. Validates and de-duplicates the domain list, analyzes each domain sequentially (rate-limited), aggregates results, alerts on HIGH risk domains, delivers a batch report via callback URL, and responds with a summary. Requires env vars: DMARC_API_URL, DMARC_API_KEY, ALERT_WORKFLOW_ID, BATCH_DELAY_MS (default 2000).",
+    "instanceId": "dmarc-agent"
+  },
+  "nodes": [
+    {
+      "id": "node-w5-01",
+      "name": "Webhook: Batch Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod":     "POST",
+        "path":           "dmarc/batch",
+        "authentication": "none",
+        "responseMode":   "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-w5-02",
+      "name": "Authenticate and Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "const headers = $input.item.json.headers ?? {};\nconst authHeader = headers['authorization'] ?? headers['Authorization'] ?? '';\nconst providedKey = authHeader.replace(/^Bearer\\s+/i, '').trim();\nconst expectedKey = $env.DMARC_API_KEY ?? '';\n\nif (!providedKey || providedKey.length !== expectedKey.length) {\n  throw new NodeOperationError($node, 'Unauthorized', { httpCode: '401' });\n}\nlet diff = 0;\nfor (let i = 0; i < providedKey.length; i++) {\n  diff |= providedKey.charCodeAt(i) ^ expectedKey.charCodeAt(i);\n}\nif (diff !== 0) {\n  throw new NodeOperationError($node, 'Unauthorized', { httpCode: '401' });\n}\n\nconst body = $input.item.json.body ?? {};\nconst rawDomains = body.domains ?? [];\n\nif (!Array.isArray(rawDomains) || rawDomains.length === 0) {\n  throw new NodeOperationError($node, 'Bad Request: domains array is required', { httpCode: '400' });\n}\nif (rawDomains.length > 100) {\n  throw new NodeOperationError($node, 'Bad Request: maximum 100 domains per batch', { httpCode: '400' });\n}\n\nconst domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,}$/;\nconst invalid = rawDomains.filter(d => !domainRegex.test((d ?? '').toLowerCase()));\nif (invalid.length > 0) {\n  throw new NodeOperationError($node, `Bad Request: invalid domain(s): ${invalid.join(', ')}`, { httpCode: '400' });\n}\n\n// Deduplicate, preserve order\nconst seen = new Set();\nconst domains = rawDomains\n  .map(d => d.toLowerCase().trim())\n  .filter(d => { if (seen.has(d)) return false; seen.add(d); return true; });\n\nconst options = body.options ?? {};\n\nreturn {\n  json: {\n    batch_id:     crypto.randomUUID(),\n    domains,\n    total:        domains.length,\n    callback_url: options.callback_url  ?? null,\n    priority:     options.priority      ?? 'normal',\n    started_at:   new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w5-03",
+      "name": "Respond 202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [640, 180],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ batch_id: $json.batch_id, status: 'processing', total_domains: $json.total, started_at: $json.started_at }) }}",
+        "options": {
+          "responseCode": 202,
+          "responseHeaders": {
+            "entries": [{ "name": "Content-Type", "value": "application/json" }]
+          }
+        }
+      }
+    },
+    {
+      "id": "node-w5-04",
+      "name": "Expand to One Item Per Domain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 400],
+      "parameters": {
+        "jsCode": "// Split the domains array into individual items so subsequent nodes run per domain.\nconst ctx = $input.item.json;\nreturn ctx.domains.map((domain, index) => ({\n  json: {\n    batch_id:     ctx.batch_id,\n    domain,\n    index,\n    total:        ctx.total,\n    callback_url: ctx.callback_url,\n    priority:     ctx.priority,\n    started_at:   ctx.started_at\n  }\n}));"
+      }
+    },
+    {
+      "id": "node-w5-05",
+      "name": "Rate-Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [860, 400],
+      "parameters": {
+        "amount": "={{ Math.floor(($json.index * parseInt($env.BATCH_DELAY_MS ?? '2000')) / 1000) }}",
+        "unit":   "seconds"
+      }
+    },
+    {
+      "id": "node-w5-06",
+      "name": "Analyze Domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 400],
+      "parameters": {
+        "method": "POST",
+        "url":    "={{ $env.DMARC_API_URL }}/api/v1/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DMARC_API_KEY }}" }
+          ]
+        },
+        "sendBody":    true,
+        "specifyBody": "json",
+        "jsonBody":    "={{ JSON.stringify({ domain: $json.domain }) }}",
+        "options": {
+          "timeout": 30000,
+          "batching": { "batch": { "batchSize": 1, "batchInterval": 0 } }
+        }
+      }
+    },
+    {
+      "id": "node-w5-07",
+      "name": "Tag Result with Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 400],
+      "parameters": {
+        "jsCode": "const ctx    = $('Expand to One Item Per Domain').item.json;\nconst result = $input.item.json;\n\nreturn {\n  json: {\n    ...result,\n    batch_id:     ctx.batch_id,\n    index:        ctx.index,\n    total:        ctx.total,\n    callback_url: ctx.callback_url,\n    analyzed_at:  new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w5-08",
+      "name": "Is High Risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1520, 400],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-high",
+              "leftValue":  "={{ $json.risk_level }}",
+              "rightValue": "HIGH",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w5-09",
+      "name": "Alert on HIGH Risk",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1740, 280],
+      "parameters": {
+        "source":     "id",
+        "workflowId": "={{ $env.ALERT_WORKFLOW_ID }}",
+        "options":    { "waitForSubWorkflow": false },
+        "fields": {
+          "values": [
+            { "name": "domain",     "stringValue": "={{ $json.domain }}" },
+            { "name": "risk_level", "stringValue": "={{ $json.risk_level }}" },
+            { "name": "alert_type", "stringValue": "high_risk" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-w5-10",
+      "name": "Collect All Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1960, 400],
+      "parameters": {
+        "aggregate":             "aggregateAllItemData",
+        "destinationFieldName":  "results",
+        "include":               "allFields"
+      }
+    },
+    {
+      "id": "node-w5-11",
+      "name": "Build Batch Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2180, 400],
+      "parameters": {
+        "jsCode": "const results = $input.item.json.results;\n\nconst summary = {\n  total:    results.length,\n  high:     results.filter(r => r.risk_level === 'HIGH').length,\n  medium:   results.filter(r => r.risk_level === 'MEDIUM').length,\n  low:      results.filter(r => r.risk_level === 'LOW').length,\n  failed:   results.filter(r => !r.risk_level).length\n};\n\nconst domains = results.map(r => ({\n  domain:      r.domain,\n  risk_level:  r.risk_level ?? 'ERROR',\n  analyzed_at: r.analyzed_at,\n  issues:      (r.security_status ? Object.values(r.security_status).flatMap(s => s.issues ?? []).map(i => i.id ?? i.message ?? i) : [])\n}));\n\nconst batch_id    = results[0]?.batch_id ?? 'unknown';\nconst callback_url = results[0]?.callback_url ?? null;\n\nreturn {\n  json: {\n    batch_id,\n    status:       summary.failed === results.length ? 'failed' : summary.failed > 0 ? 'partial_failure' : 'completed',\n    completed_at: new Date().toISOString(),\n    summary,\n    domains,\n    callback_url\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w5-12",
+      "name": "Has Batch Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2400, 400],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-batch-cb",
+              "leftValue":  "={{ $json.callback_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "isNotEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w5-13",
+      "name": "POST Batch Report to Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2620, 280],
+      "parameters": {
+        "method":      "POST",
+        "url":         "={{ $json.callback_url }}",
+        "sendBody":    true,
+        "specifyBody": "json",
+        "jsonBody":    "={{ JSON.stringify($json) }}",
+        "options":     { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "node-w5-14",
+      "name": "Log Batch Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2840, 400],
+      "parameters": {
+        "jsCode": "const r = $('Build Batch Report').item.json;\nconsole.log(JSON.stringify({\n  event:        'batch_complete',\n  batch_id:     r.batch_id,\n  status:       r.status,\n  total:        r.summary.total,\n  high:         r.summary.high,\n  medium:       r.summary.medium,\n  low:          r.summary.low,\n  failed:       r.summary.failed,\n  completed_at: r.completed_at\n}));\nreturn { json: { status: 'logged', batch_id: r.batch_id } };"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Batch Request": {
+      "main": [[{ "node": "Authenticate and Validate", "type": "main", "index": 0 }]]
+    },
+    "Authenticate and Validate": {
+      "main": [
+        [{ "node": "Respond 202 Accepted",          "type": "main", "index": 0 }],
+        [{ "node": "Expand to One Item Per Domain",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Expand to One Item Per Domain": {
+      "main": [[{ "node": "Rate-Limit Delay",         "type": "main", "index": 0 }]]
+    },
+    "Rate-Limit Delay": {
+      "main": [[{ "node": "Analyze Domain",            "type": "main", "index": 0 }]]
+    },
+    "Analyze Domain": {
+      "main": [[{ "node": "Tag Result with Context",   "type": "main", "index": 0 }]]
+    },
+    "Tag Result with Context": {
+      "main": [[{ "node": "Is High Risk?",             "type": "main", "index": 0 }]]
+    },
+    "Is High Risk?": {
+      "main": [
+        [{ "node": "Alert on HIGH Risk",    "type": "main", "index": 0 }],
+        [{ "node": "Collect All Results",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Alert on HIGH Risk": {
+      "main": [[{ "node": "Collect All Results",       "type": "main", "index": 0 }]]
+    },
+    "Collect All Results": {
+      "main": [[{ "node": "Build Batch Report",        "type": "main", "index": 0 }]]
+    },
+    "Build Batch Report": {
+      "main": [[{ "node": "Has Batch Callback?",       "type": "main", "index": 0 }]]
+    },
+    "Has Batch Callback?": {
+      "main": [
+        [{ "node": "POST Batch Report to Callback",  "type": "main", "index": 0 }],
+        [{ "node": "Log Batch Complete",             "type": "main", "index": 0 }]
+      ]
+    },
+    "POST Batch Report to Callback": {
+      "main": [[{ "node": "Log Batch Complete",        "type": "main", "index": 0 }]]
+    }
+  }
+}

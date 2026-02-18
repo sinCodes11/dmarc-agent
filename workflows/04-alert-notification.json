@@ -1,0 +1,145 @@
+{
+  "name": "DMARC: 04 Alert and Notification",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "description": "Sub-workflow called by workflows 01, 02, and 05 to deliver alerts via email and Slack. Accepts domain, alert_type, risk_level, previous_risk_level, contact_email, owner, and detail as input fields. Requires env vars: SMTP_FROM_EMAIL, SLACK_CHANNEL_ID, DMARC_REPORT_BASE_URL.",
+    "instanceId": "dmarc-agent"
+  },
+  "nodes": [
+    {
+      "id": "node-w4-01",
+      "name": "Sub-Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {}
+    },
+    {
+      "id": "node-w4-02",
+      "name": "Determine Severity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "const input = $input.item.json;\n\nconst domain          = input.domain           ?? 'unknown';\nconst alertType       = input.alert_type        ?? 'unknown';\nconst riskLevel       = input.risk_level        ?? 'UNKNOWN';\nconst prevRiskLevel   = input.previous_risk_level ?? null;\nconst contactEmail    = input.contact_email     ?? null;\nconst owner           = input.owner             ?? 'Unknown';\nconst detail          = input.detail            ?? '';\n\n// Severity mapping per spec\nconst severityMap = {\n  high_risk:              'critical',\n  'LOW_to_HIGH':          'critical',\n  'MEDIUM_to_HIGH':       'critical',\n  'LOW_to_MEDIUM':        'warning',\n  'HIGH_to_MEDIUM':       'info',\n  'HIGH_to_LOW':          'info',\n  'MEDIUM_to_LOW':        'info',\n  anomaly_detected:       'warning',\n  configuration_change:   'info',\n  report_processing_failure: 'warning',\n  scan_failure:           'warning'\n};\n\nlet severityKey = alertType;\nif (alertType === 'risk_level_change' && prevRiskLevel) {\n  severityKey = `${prevRiskLevel}_to_${riskLevel}`;\n}\n\nconst severity = severityMap[severityKey] ?? 'info';\n\nconst severityEmoji = { critical: '🚨', warning: '⚠️', info: 'ℹ️' }[severity] ?? 'ℹ️';\nconst severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);\n\nconst alertDescriptions = {\n  high_risk:             `Domain ${domain} is classified as HIGH RISK. Immediate action required to prevent email spoofing.`,\n  risk_level_change:     `Risk level for ${domain} changed from ${prevRiskLevel} to ${riskLevel}.`,\n  anomaly_detected:      `Unusual activity detected in DMARC aggregate report for ${domain}.`,\n  configuration_change:  `DNS record changes detected for ${domain} since the last scan.`,\n  report_processing_failure: `Failed to process DMARC aggregate report for ${domain}.`,\n  scan_failure:          `Scheduled security scan failed for ${domain}.`\n};\n\nconst description = alertDescriptions[alertType] ?? `Security alert for ${domain}: ${alertType}`;\n\nconst recommendedActions = {\n  high_risk:             'Review and implement DMARC, SPF, and DKIM records immediately. See the full report for DNS records ready to copy and paste.',\n  risk_level_change:     riskLevel === 'HIGH' ? 'Review the full report and address all HIGH risk findings.' : 'Review the change log in the full report.',\n  anomaly_detected:      'Review the DMARC aggregate report for suspicious senders and consider tightening your DMARC policy.',\n  configuration_change:  'Verify that DNS record changes were intentional. Re-run analysis to confirm security posture.',\n  report_processing_failure: 'Check the DMARC report mailbox and re-process the report manually if needed.',\n  scan_failure:          'Check DMARC agent service health and retry the scan.'\n};\n\nconst action = recommendedActions[alertType] ?? 'Review the DMARC Security Agent dashboard.';\n\nconst reportUrl = `${$env.DMARC_REPORT_BASE_URL ?? 'https://your-dmarc-dashboard.example.com'}/reports/${domain}`;\n\nreturn {\n  json: {\n    domain, alertType, riskLevel, prevRiskLevel,\n    contactEmail, owner, detail,\n    severity, severityLabel, severityEmoji,\n    description, action, reportUrl,\n    timestamp: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w4-03",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 200],
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\n\nconst subject = `[DMARC Alert] ${d.severityLabel} — ${d.domain} — ${d.alertType.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase())}`;\n\nconst body = [\n  `${d.domain} Email Security Alert`,\n  `${'─'.repeat(50)}`,\n  `Severity  : ${d.severityLabel}`,\n  `Alert Type: ${d.alertType.replace(/_/g, ' ')}`,\n  `Time      : ${d.timestamp}`,\n  `Owner     : ${d.owner}`,\n  '',\n  d.description,\n  '',\n  `Current Risk Level : ${d.riskLevel}`,\n  d.prevRiskLevel ? `Previous Risk Level: ${d.prevRiskLevel}` : null,\n  d.detail ? `\\nDetails:\\n${d.detail}` : null,\n  '',\n  'Recommended Action:',\n  d.action,\n  '',\n  `View Full Report: ${d.reportUrl}`,\n  '',\n  `${'─'.repeat(50)}`,\n  'DMARC Security Agent | Automated Alert',\n  'Do not reply to this message.'\n].filter(line => line !== null).join('\\n');\n\nreturn { json: { ...d, emailSubject: subject, emailBody: body } };"
+      }
+    },
+    {
+      "id": "node-w4-04",
+      "name": "Format Slack Block",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 400],
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\n\nconst blocks = [\n  {\n    type: 'header',\n    text: { type: 'plain_text', text: `${d.severityEmoji} DMARC Alert: ${d.domain}`, emoji: true }\n  },\n  {\n    type: 'section',\n    fields: [\n      { type: 'mrkdwn', text: `*Severity:*\\n${d.severityLabel}` },\n      { type: 'mrkdwn', text: `*Risk Level:*\\n${d.riskLevel}` },\n      { type: 'mrkdwn', text: `*Domain:*\\n${d.domain}` },\n      { type: 'mrkdwn', text: `*Owner:*\\n${d.owner}` }\n    ]\n  },\n  {\n    type: 'section',\n    text: { type: 'mrkdwn', text: d.description }\n  }\n];\n\nif (d.detail) {\n  blocks.push({\n    type: 'section',\n    text: { type: 'mrkdwn', text: `*Details:*\\n\\`\\`\\`${d.detail.slice(0, 2900)}\\`\\`\\`` }\n  });\n}\n\nblocks.push(\n  {\n    type: 'section',\n    text: { type: 'mrkdwn', text: `*Recommended Action:*\\n${d.action}` }\n  },\n  {\n    type: 'actions',\n    elements: [\n      {\n        type: 'button',\n        style: d.severity === 'critical' ? 'danger' : 'primary',\n        text: { type: 'plain_text', text: 'View Full Report', emoji: true },\n        url: d.reportUrl\n      }\n    ]\n  },\n  {\n    type: 'context',\n    elements: [\n      { type: 'mrkdwn', text: `DMARC Security Agent | ${d.timestamp}` }\n    ]\n  }\n);\n\nreturn { json: { ...d, slackBlocks: JSON.stringify(blocks) } };"
+      }
+    },
+    {
+      "id": "node-w4-05",
+      "name": "Has Contact Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [860, 200],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-email",
+              "leftValue":  "={{ $json.contactEmail }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "isNotEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w4-06",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 2,
+      "position": [1080, 120],
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM_EMAIL }}",
+        "toEmail":   "={{ $json.contactEmail }}",
+        "subject":   "={{ $json.emailSubject }}",
+        "text":      "={{ $json.emailBody }}"
+      },
+      "credentials": {
+        "smtp": { "id": "smtp-credential", "name": "SMTP Account" }
+      }
+    },
+    {
+      "id": "node-w4-07",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1080, 400],
+      "parameters": {
+        "resource":   "message",
+        "operation":  "post",
+        "channel":    "={{ $env.SLACK_CHANNEL_ID }}",
+        "blocksUi":   "={{ $json.slackBlocks }}",
+        "text":       "={{ $json.description }}"
+      },
+      "credentials": {
+        "slackApi": { "id": "slack-credential", "name": "Slack Account" }
+      }
+    },
+    {
+      "id": "node-w4-08",
+      "name": "Log Alert Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "jsCode": "const d = $('Determine Severity').item.json;\nconsole.log(JSON.stringify({\n  event:      'alert_delivered',\n  domain:     d.domain,\n  alert_type: d.alertType,\n  severity:   d.severity,\n  risk_level: d.riskLevel,\n  delivered_at: new Date().toISOString()\n}));\nreturn { json: { status: 'alert_delivered', domain: d.domain, severity: d.severity } };"
+      }
+    }
+  ],
+  "connections": {
+    "Sub-Workflow Trigger": {
+      "main": [[{ "node": "Determine Severity", "type": "main", "index": 0 }]]
+    },
+    "Determine Severity": {
+      "main": [
+        [{ "node": "Format Email",     "type": "main", "index": 0 }],
+        [{ "node": "Format Slack Block","type": "main", "index": 0 }]
+      ]
+    },
+    "Format Email": {
+      "main": [[{ "node": "Has Contact Email?", "type": "main", "index": 0 }]]
+    },
+    "Has Contact Email?": {
+      "main": [
+        [{ "node": "Send Alert Email",    "type": "main", "index": 0 }],
+        [{ "node": "Log Alert Delivered", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Alert Email": {
+      "main": [[{ "node": "Log Alert Delivered", "type": "main", "index": 0 }]]
+    },
+    "Format Slack Block": {
+      "main": [[{ "node": "Send Slack Alert",    "type": "main", "index": 0 }]]
+    },
+    "Send Slack Alert": {
+      "main": [[{ "node": "Log Alert Delivered", "type": "main", "index": 0 }]]
+    }
+  }
+}

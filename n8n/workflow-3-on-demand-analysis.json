@@ -1,0 +1,83 @@
+{
+  "name": "DMARC — Workflow 3: On-Demand Analysis (Webhook)",
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "dmarc-on-demand",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dmarc-analyze",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst domain = (body.domain || '').trim().toLowerCase();\nif (!domain) {\n  throw new Error('domain is required');\n}\nreturn [{ json: { domain, options: body.options || {} } }];"
+      }
+    },
+    {
+      "id": "analyze-domain",
+      "name": "Analyze Domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DMARC_API_BASE_URL }}/api/v1/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ domain: $json.domain, options: $json.options }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300],
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nreturn [{\n  json: {\n    request_id: result.request_id,\n    domain: result.domain,\n    timestamp: result.timestamp,\n    risk_level: result.risk_level,\n    analysis: result,\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Validate Request", "type": "main", "index": 0 }]]
+    },
+    "Validate Request": {
+      "main": [[{ "node": "Analyze Domain", "type": "main", "index": 0 }]]
+    },
+    "Analyze Domain": {
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["dmarc", "webhook", "on-demand"],
+  "notes": "Workflow 3: On-Demand Analysis via webhook.\n\nExposes a webhook endpoint that accepts:\n  POST /webhook/dmarc-analyze\n  { \"domain\": \"example.com\", \"options\": { \"dkim_selector\": \"google\" } }\n\nReturns the full JSON analysis result synchronously.\n\nRequired env vars:\n  DMARC_API_BASE_URL, DMARC_API_KEY\n\nThis workflow proxies requests to the DMARC API server.\nYou can call it directly from external tools (CI/CD pipelines, scripts, etc.)."
+}

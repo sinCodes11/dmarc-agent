@@ -1,0 +1,243 @@
+{
+  "name": "DMARC: 01 Scheduled Domain Scan",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "description": "Weekly scheduled scan of all configured domains. Analyzes SPF, DKIM, and DMARC, alerts on HIGH risk or risk-level changes, then sends an email and Slack summary. Requires env vars: DMARC_API_URL, DMARC_API_KEY, ALERT_WORKFLOW_ID, SMTP_FROM_EMAIL, SUMMARY_EMAIL_TO, SLACK_CHANNEL_ID.",
+    "instanceId": "dmarc-agent"
+  },
+  "nodes": [
+    {
+      "id": "node-w1-01",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * 0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-w1-02",
+      "name": "Load Domain List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "// Edit this list or replace with a database/API read.\n// Each object becomes a separate item — HTTP Request runs once per domain.\nconst domains = [\n  {\n    domain: 'example.com',\n    owner: 'Client A',\n    contact_email: 'admin@example.com',\n    priority: 'high',\n    last_risk_level: null\n  },\n  {\n    domain: 'example.org',\n    owner: 'Client B',\n    contact_email: 'it@example.org',\n    priority: 'normal',\n    last_risk_level: 'MEDIUM'\n  }\n];\n\nreturn domains.map(d => ({ json: d }));"
+      }
+    },
+    {
+      "id": "node-w1-03",
+      "name": "Analyze Domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DMARC_API_URL }}/api/v1/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ domain: $json.domain }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-w1-04",
+      "name": "Merge With Domain Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300],
+      "parameters": {
+        "jsCode": "// Pair API response with the original domain config item.\n// $('Load Domain List').item gives the paired input from the same execution index.\nconst config = $('Load Domain List').item.json;\nconst result = $input.item.json;\n\nconst prevRisk = config.last_risk_level;\nconst currRisk = result.risk_level;\nconst riskChanged = prevRisk !== null && prevRisk !== currRisk;\nconst isHighRisk = currRisk === 'HIGH';\n\nreturn {\n  json: {\n    ...result,\n    owner: config.owner,\n    contact_email: config.contact_email,\n    priority: config.priority,\n    previous_risk_level: prevRisk,\n    risk_changed: riskChanged,\n    send_alert: isHighRisk || riskChanged\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w1-05",
+      "name": "Should Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1080, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-alert",
+              "leftValue": "={{ $json.send_alert }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w1-06",
+      "name": "Trigger Alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1300, 180],
+      "parameters": {
+        "source": "id",
+        "workflowId": "={{ $env.ALERT_WORKFLOW_ID }}",
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            { "name": "domain",               "stringValue": "={{ $json.domain }}" },
+            { "name": "risk_level",           "stringValue": "={{ $json.risk_level }}" },
+            { "name": "previous_risk_level",  "stringValue": "={{ $json.previous_risk_level ?? 'N/A' }}" },
+            { "name": "contact_email",        "stringValue": "={{ $json.contact_email }}" },
+            { "name": "alert_type",           "stringValue": "={{ $json.risk_level === 'HIGH' ? 'high_risk' : 'risk_level_change' }}" },
+            { "name": "owner",                "stringValue": "={{ $json.owner }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-w1-07",
+      "name": "Merge Alert and No-Alert Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1520, 300],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "node-w1-08",
+      "name": "Aggregate All Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1720, 300],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "scan_results",
+        "include": "allFields"
+      }
+    },
+    {
+      "id": "node-w1-09",
+      "name": "Format Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1940, 300],
+      "parameters": {
+        "jsCode": "const results = $input.item.json.scan_results;\n\nconst high   = results.filter(r => r.risk_level === 'HIGH').length;\nconst medium = results.filter(r => r.risk_level === 'MEDIUM').length;\nconst low    = results.filter(r => r.risk_level === 'LOW').length;\nconst changed = results.filter(r => r.risk_changed).length;\nconst alerted = results.filter(r => r.send_alert).length;\n\nconst domainRows = results\n  .map(r => {\n    const badge = r.risk_level === 'HIGH' ? '🔴' : r.risk_level === 'MEDIUM' ? '🟡' : '🟢';\n    const change = r.risk_changed ? ` (was ${r.previous_risk_level})` : '';\n    return `  ${badge} ${r.domain}: ${r.risk_level}${change} — ${r.owner}`;\n  })\n  .join('\\n');\n\nconst subject = `[DMARC] Weekly Scan — ${high} HIGH, ${medium} MEDIUM, ${low} LOW`;\n\nconst body = [\n  'DMARC Security Agent — Weekly Scan Summary',\n  '═══════════════════════════════════════════',\n  `Domains scanned : ${results.length}`,\n  `HIGH risk       : ${high}`,\n  `MEDIUM risk     : ${medium}`,\n  `LOW risk        : ${low}`,\n  `Risk changed    : ${changed}`,\n  `Alerts sent     : ${alerted}`,\n  '',\n  'Domain Details:',\n  domainRows,\n  '',\n  `Scan time: ${new Date().toISOString()}`,\n  '---',\n  'DMARC Security Agent | Automated Report'\n].join('\\n');\n\nconst slackText = [\n  `*DMARC Weekly Scan Complete* — ${results.length} domains`,\n  `🔴 HIGH: ${high} | 🟡 MEDIUM: ${medium} | 🟢 LOW: ${low} | Changed: ${changed}`,\n  domainRows\n].join('\\n');\n\nreturn {\n  json: { subject, body, slackText, high, medium, low, changed, total: results.length }\n};"
+      }
+    },
+    {
+      "id": "node-w1-10",
+      "name": "Send Email Summary",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 2,
+      "position": [2160, 200],
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM_EMAIL }}",
+        "toEmail":   "={{ $env.SUMMARY_EMAIL_TO }}",
+        "subject":   "={{ $json.subject }}",
+        "text":      "={{ $json.body }}"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credential",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "id": "node-w1-11",
+      "name": "Send Slack Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [2160, 400],
+      "parameters": {
+        "resource":  "message",
+        "operation": "post",
+        "channel":   "={{ $env.SLACK_CHANNEL_ID }}",
+        "text":      "={{ $json.slackText }}"
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credential",
+          "name": "Slack Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [[{ "node": "Load Domain List", "type": "main", "index": 0 }]]
+    },
+    "Load Domain List": {
+      "main": [[{ "node": "Analyze Domain", "type": "main", "index": 0 }]]
+    },
+    "Analyze Domain": {
+      "main": [[{ "node": "Merge With Domain Config", "type": "main", "index": 0 }]]
+    },
+    "Merge With Domain Config": {
+      "main": [[{ "node": "Should Alert?", "type": "main", "index": 0 }]]
+    },
+    "Should Alert?": {
+      "main": [
+        [{ "node": "Trigger Alert",                    "type": "main", "index": 0 }],
+        [{ "node": "Merge Alert and No-Alert Paths",   "type": "main", "index": 1 }]
+      ]
+    },
+    "Trigger Alert": {
+      "main": [[{ "node": "Merge Alert and No-Alert Paths", "type": "main", "index": 0 }]]
+    },
+    "Merge Alert and No-Alert Paths": {
+      "main": [[{ "node": "Aggregate All Results", "type": "main", "index": 0 }]]
+    },
+    "Aggregate All Results": {
+      "main": [[{ "node": "Format Summary", "type": "main", "index": 0 }]]
+    },
+    "Format Summary": {
+      "main": [
+        [{ "node": "Send Email Summary", "type": "main", "index": 0 }],
+        [{ "node": "Send Slack Summary", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "name": "DMARC: 03 On-Demand Analysis",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "description": "Webhook-triggered single-domain analysis. Validates the request, authenticates via API key, calls the DMARC agent API, and returns structured JSON. Supports optional callback_url for async delivery. Requires env vars: DMARC_API_URL, DMARC_API_KEY, WEBHOOK_SIGNING_SECRET.",
+    "instanceId": "dmarc-agent"
+  },
+  "nodes": [
+    {
+      "id": "node-w3-01",
+      "name": "Webhook: Analyze Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod":     "POST",
+        "path":           "dmarc/analyze",
+        "authentication": "none",
+        "responseMode":   "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "node-w3-02",
+      "name": "Verify API Key",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "const headers = $input.item.json.headers ?? {};\nconst authHeader = headers['authorization'] ?? headers['Authorization'] ?? '';\nconst providedKey = authHeader.replace(/^Bearer\\s+/i, '').trim();\nconst expectedKey = $env.DMARC_API_KEY ?? '';\n\n// Constant-time comparison to prevent timing attacks\nif (!providedKey || providedKey.length !== expectedKey.length) {\n  throw new NodeOperationError($node, 'Unauthorized: missing or invalid API key', { httpCode: '401' });\n}\nlet diff = 0;\nfor (let i = 0; i < providedKey.length; i++) {\n  diff |= providedKey.charCodeAt(i) ^ expectedKey.charCodeAt(i);\n}\nif (diff !== 0) {\n  throw new NodeOperationError($node, 'Unauthorized: invalid API key', { httpCode: '401' });\n}\n\n// Pass body through\nreturn { json: $input.item.json.body ?? {} };"
+      }
+    },
+    {
+      "id": "node-w3-03",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300],
+      "parameters": {
+        "jsCode": "const body = $input.item.json;\nconst domain = (body.domain ?? '').trim().toLowerCase();\n\nif (!domain) {\n  throw new NodeOperationError($node, 'Bad Request: domain is required', { httpCode: '400' });\n}\n\n// Basic domain syntax check (labels separated by dots, no spaces)\nconst domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,}$/;\nif (!domainRegex.test(domain)) {\n  throw new NodeOperationError($node, `Bad Request: invalid domain format \"${domain}\"`, { httpCode: '400' });\n}\n\nconst options = body.options ?? {};\n\nreturn {\n  json: {\n    request_id:    crypto.randomUUID(),\n    domain,\n    dkim_selector: options.dkim_selector ?? null,\n    callback_url:  options.callback_url  ?? null,\n    requested_at:  new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w3-04",
+      "name": "Call DMARC Agent API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 300],
+      "parameters": {
+        "method": "POST",
+        "url":    "={{ $env.DMARC_API_URL }}/api/v1/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.DMARC_API_KEY }}" }
+          ]
+        },
+        "sendBody":    true,
+        "specifyBody": "json",
+        "jsonBody":    "={{ JSON.stringify({ domain: $json.domain, dkim_selector: $json.dkim_selector }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "fullResponse": false } }
+        }
+      }
+    },
+    {
+      "id": "node-w3-05",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300],
+      "parameters": {
+        "jsCode": "const ctx    = $('Validate Input').item.json;\nconst result = $input.item.json;\n\nreturn {\n  json: {\n    request_id:  ctx.request_id,\n    domain:      ctx.domain,\n    timestamp:   new Date().toISOString(),\n    risk_level:  result.risk_level,\n    analysis:    result,\n    callback_url: ctx.callback_url\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w3-06",
+      "name": "Has Callback URL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-callback",
+              "leftValue":  "={{ $json.callback_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "isNotEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w3-07",
+      "name": "POST to Callback URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 180],
+      "parameters": {
+        "method":      "POST",
+        "url":         "={{ $json.callback_url }}",
+        "sendBody":    true,
+        "specifyBody": "json",
+        "jsonBody":    "={{ JSON.stringify($json) }}",
+        "options":     { "timeout": 10000 }
+      }
+    },
+    {
+      "id": "node-w3-08",
+      "name": "Respond: 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1740, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Build Response').item.json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Analyze Request": {
+      "main": [[{ "node": "Verify API Key",       "type": "main", "index": 0 }]]
+    },
+    "Verify API Key": {
+      "main": [[{ "node": "Validate Input",        "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [[{ "node": "Call DMARC Agent API",  "type": "main", "index": 0 }]]
+    },
+    "Call DMARC Agent API": {
+      "main": [[{ "node": "Build Response",        "type": "main", "index": 0 }]]
+    },
+    "Build Response": {
+      "main": [[{ "node": "Has Callback URL?",     "type": "main", "index": 0 }]]
+    },
+    "Has Callback URL?": {
+      "main": [
+        [{ "node": "POST to Callback URL", "type": "main", "index": 0 }],
+        [{ "node": "Respond: 200 OK",      "type": "main", "index": 0 }]
+      ]
+    },
+    "POST to Callback URL": {
+      "main": [[{ "node": "Respond: 200 OK",       "type": "main", "index": 0 }]]
+    }
+  }
+}
