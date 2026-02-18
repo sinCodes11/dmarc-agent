@@ -1,0 +1,173 @@
+{
+  "name": "DMARC — Workflow 2: DMARC Report Ingestion",
+  "nodes": [
+    {
+      "id": "imap-trigger",
+      "name": "Poll IMAP Inbox",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "parameters": {
+        "mailbox": "INBOX",
+        "action": "read",
+        "format": "resolved",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "customEmailConfig": "",
+          "downloadAttachments": true,
+          "forceReconnect": 60,
+          "unseen": true
+        }
+      },
+      "credentials": {
+        "imap": {
+          "id": "imap-credentials",
+          "name": "DMARC IMAP Account"
+        }
+      }
+    },
+    {
+      "id": "filter-dmarc",
+      "name": "Filter DMARC Reports",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.subject }}",
+              "operation": "contains",
+              "value2": "Report domain:"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "extract-attachment",
+      "name": "Extract XML Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300],
+      "parameters": {
+        "jsCode": "// Extract the first .xml, .xml.gz, or .zip attachment\nconst items = $input.all();\nconst results = [];\nfor (const item of items) {\n  const attachments = item.json.attachments || [];\n  for (const att of attachments) {\n    const name = att.filename || '';\n    if (name.endsWith('.xml') || name.endsWith('.xml.gz') || name.endsWith('.zip')) {\n      results.push({\n        json: {\n          filename: name,\n          subject: item.json.subject,\n          from: item.json.from,\n        },\n        binary: { attachment: att }\n      });\n    }\n  }\n}\nreturn results;"
+      }
+    },
+    {
+      "id": "save-attachment",
+      "name": "Save Attachment to Disk",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "parameters": {
+        "fileName": "=/tmp/dmarc_report_{{ $json.filename }}",
+        "dataPropertyName": "attachment"
+      }
+    },
+    {
+      "id": "parse-report",
+      "name": "Parse DMARC Report via API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DMARC_API_BASE_URL }}/api/v1/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DMARC_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ domain: $json.subject.match(/Report domain:\\s*([\\w.-]+)/)?.[1] || 'unknown' }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "check-anomaly",
+      "name": "Check Anomaly Thresholds",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "risk-high",
+              "leftValue": "={{ $json.risk_level }}",
+              "rightValue": "HIGH",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "alert-anomaly",
+      "name": "Alert on Anomaly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1300, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `⚠️ *DMARC Report Anomaly*\\n*Domain:* ${$json.domain}\\n*Risk:* ${$json.risk_level}\\n*Impact:* ${$json.business_impact}` }) }}"
+      }
+    },
+    {
+      "id": "log-ingestion",
+      "name": "Log Ingestion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 400],
+      "parameters": {
+        "jsCode": "console.log('DMARC report ingested:', $json.domain, new Date().toISOString());\nreturn $input.all();"
+      }
+    }
+  ],
+  "connections": {
+    "Poll IMAP Inbox": {
+      "main": [[{ "node": "Filter DMARC Reports", "type": "main", "index": 0 }]]
+    },
+    "Filter DMARC Reports": {
+      "main": [[{ "node": "Extract XML Attachment", "type": "main", "index": 0 }]]
+    },
+    "Extract XML Attachment": {
+      "main": [[{ "node": "Save Attachment to Disk", "type": "main", "index": 0 }]]
+    },
+    "Save Attachment to Disk": {
+      "main": [[{ "node": "Parse DMARC Report via API", "type": "main", "index": 0 }]]
+    },
+    "Parse DMARC Report via API": {
+      "main": [[{ "node": "Check Anomaly Thresholds", "type": "main", "index": 0 }]]
+    },
+    "Check Anomaly Thresholds": {
+      "main": [
+        [{ "node": "Alert on Anomaly", "type": "main", "index": 0 }],
+        [{ "node": "Log Ingestion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Alert on Anomaly": {
+      "main": [[{ "node": "Log Ingestion", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["dmarc", "ingestion", "reports"],
+  "notes": "Workflow 2: DMARC Report Ingestion.\n\nPolls an IMAP mailbox every 6 hours for incoming DMARC aggregate reports.\nFilters emails with 'Report domain:' in the subject, extracts XML/gz/zip attachments,\nand triggers a full domain re-analysis via the API.\n\nRequired n8n credentials:\n  IMAP Account — configure under Credentials with your DMARC mailbox details\n\nRequired env vars:\n  DMARC_API_BASE_URL, DMARC_API_KEY, SLACK_WEBHOOK_URL"
+}

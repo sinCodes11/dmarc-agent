@@ -1,0 +1,20 @@
+{
+  "domains": [
+    {
+      "domain": "example.com",
+      "owner": "Client A",
+      "contact_email": "admin@example.com",
+      "priority": "high",
+      "last_scan": null,
+      "last_risk_level": null
+    },
+    {
+      "domain": "example.org",
+      "owner": "Client B",
+      "contact_email": "it@example.org",
+      "priority": "normal",
+      "last_scan": null,
+      "last_risk_level": "MEDIUM"
+    }
+  ]
+}

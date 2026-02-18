@@ -1,0 +1,170 @@
+{
+  "name": "DMARC: 02 Report Ingestion",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "description": "Polls an IMAP mailbox every 6 hours for DMARC aggregate report emails. Saves attachments, parses them via the dmarc-agent CLI, checks anomaly thresholds, and triggers the Alert workflow on suspicious findings. Requires env vars: DMARC_API_URL, DMARC_API_KEY, ALERT_WORKFLOW_ID, REPORT_STORAGE_PATH, IMAP_MAILBOX.",
+    "instanceId": "dmarc-agent"
+  },
+  "nodes": [
+    {
+      "id": "node-w2-01",
+      "name": "Poll IMAP Every 6 Hours",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "mailbox":         "={{ $env.IMAP_MAILBOX ?? 'INBOX' }}",
+        "postProcessAction": "read",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "customEmailConfig": "[\"UNSEEN\", [\"SUBJECT\", \"Report domain:\"]]"
+        }
+      },
+      "credentials": {
+        "imap": {
+          "id": "imap-credential",
+          "name": "DMARC Report Mailbox"
+        }
+      },
+      "polling": true,
+      "pollTimes": {
+        "item": [{ "mode": "everyX", "value": 6, "unit": "hours" }]
+      }
+    },
+    {
+      "id": "node-w2-02",
+      "name": "Extract Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "jsCode": "// IMAP node provides attachments as binary data.\n// Find the DMARC report attachment (gzip, zip, or xml).\nconst accepted = ['application/gzip', 'application/zip', 'application/xml', 'text/xml'];\n\nconst attachments = $input.item.binary ?? {};\nconst attachmentKeys = Object.keys(attachments);\n\nif (attachmentKeys.length === 0) {\n  throw new Error('No attachments found in email: ' + $input.item.json.subject);\n}\n\n// Pick the first accepted attachment.\nconst key = attachmentKeys.find(k => {\n  const mime = attachments[k].mimeType ?? '';\n  return accepted.some(a => mime.includes(a.split('/')[1]));\n}) ?? attachmentKeys[0];\n\nconst attachment = attachments[key];\n\nif ((attachment.fileSize ?? Infinity) > 52428800) {\n  throw new Error(`Attachment too large (>${attachment.fileSize} bytes): ${attachment.fileName}`);\n}\n\nreturn {\n  json: {\n    email_subject:  $input.item.json.subject,\n    email_from:     $input.item.json.from,\n    received_at:    $input.item.json.date ?? new Date().toISOString(),\n    attachment_key: key,\n    filename:       attachment.fileName ?? 'report.xml.gz',\n    mime_type:      attachment.mimeType\n  },\n  binary: { report: attachment }\n};"
+      }
+    },
+    {
+      "id": "node-w2-03",
+      "name": "Save Attachment to Disk",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "parameters": {
+        "fileName": "={{ ($env.REPORT_STORAGE_PATH ?? '/tmp/dmarc-reports') + '/' + $now.toFormat('yyyyMMdd-HHmmss') + '-' + $json.filename }}",
+        "options":  {}
+      }
+    },
+    {
+      "id": "node-w2-04",
+      "name": "Parse Report via CLI",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [860, 300],
+      "parameters": {
+        "command": "=dmarc-agent parse-report \"{{ $json.fileName }}\" --format json"
+      }
+    },
+    {
+      "id": "node-w2-05",
+      "name": "Parse CLI JSON Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300],
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.stdout ?? '';\n\nif (!raw.trim()) {\n  throw new Error('dmarc-agent parse-report returned no output. stderr: ' + ($input.item.json.stderr ?? ''));\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  throw new Error('Failed to parse JSON from dmarc-agent: ' + e.message + '\\nOutput: ' + raw.slice(0, 500));\n}\n\nreturn {\n  json: {\n    ...parsed,\n    source_file:    $('Save Attachment to Disk').item.json.fileName,\n    email_from:     $('Extract Attachment').item.json.email_from,\n    received_at:    $('Extract Attachment').item.json.received_at\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w2-06",
+      "name": "Check Anomaly Thresholds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "jsCode": "const report = $input.item.json;\nconst stats  = report.statistics ?? {};\n\nconst anomalies = [];\n\n// Pass rate drop below 90%\nconst passRate = stats.dmarc_pass_rate ?? 100;\nif (passRate < 90) {\n  anomalies.push({\n    type: 'pass_rate_drop',\n    detail: `DMARC pass rate is ${passRate.toFixed(1)}% (threshold: 90%)`\n  });\n}\n\n// DKIM pass rate below 95%\nconst dkimRate = stats.dkim_pass_rate ?? 100;\nif (dkimRate < 95) {\n  anomalies.push({\n    type: 'dkim_pass_rate_drop',\n    detail: `DKIM pass rate is ${dkimRate.toFixed(1)}% (threshold: 95%)`\n  });\n}\n\n// Suspicious sources (potential spoofing)\nconst sources = report.records ?? [];\nconst suspicious = sources.filter(r => {\n  const cls = r.source_classification ?? '';\n  return cls === 'suspicious';\n});\nif (suspicious.length > 0) {\n  anomalies.push({\n    type: 'new_unauthorized_source',\n    detail: `${suspicious.length} suspicious source IP(s) detected: ` +\n            suspicious.map(s => s.source_ip).join(', ')\n  });\n}\n\nreturn {\n  json: {\n    ...report,\n    anomalies,\n    anomaly_detected: anomalies.length > 0\n  }\n};"
+      }
+    },
+    {
+      "id": "node-w2-07",
+      "name": "Anomaly Detected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1520, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond-anomaly",
+              "leftValue":  "={{ $json.anomaly_detected }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-w2-08",
+      "name": "Trigger Anomaly Alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1740, 180],
+      "parameters": {
+        "source":    "id",
+        "workflowId": "={{ $env.ALERT_WORKFLOW_ID }}",
+        "options":   { "waitForSubWorkflow": true },
+        "fields": {
+          "values": [
+            { "name": "domain",      "stringValue": "={{ $json.metadata?.domain ?? 'unknown' }}" },
+            { "name": "alert_type",  "stringValue": "anomaly_detected" },
+            { "name": "risk_level",  "stringValue": "MEDIUM" },
+            { "name": "detail",      "stringValue": "={{ JSON.stringify($json.anomalies) }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-w2-09",
+      "name": "Log Processing Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 300],
+      "parameters": {
+        "jsCode": "const report = $input.item.json;\nconsole.log(JSON.stringify({\n  event:           'report_processed',\n  domain:          report.metadata?.domain ?? 'unknown',\n  report_id:       report.metadata?.report_id ?? 'unknown',\n  total_messages:  report.statistics?.total_messages ?? 0,\n  dmarc_pass_rate: report.statistics?.dmarc_pass_rate ?? null,\n  anomaly_detected: report.anomaly_detected,\n  anomaly_count:   (report.anomalies ?? []).length,\n  source_file:     report.source_file,\n  processed_at:    new Date().toISOString()\n}));\n\nreturn { json: { status: 'processed', domain: report.metadata?.domain ?? 'unknown' } };"
+      }
+    }
+  ],
+  "connections": {
+    "Poll IMAP Every 6 Hours": {
+      "main": [[{ "node": "Extract Attachment",       "type": "main", "index": 0 }]]
+    },
+    "Extract Attachment": {
+      "main": [[{ "node": "Save Attachment to Disk",  "type": "main", "index": 0 }]]
+    },
+    "Save Attachment to Disk": {
+      "main": [[{ "node": "Parse Report via CLI",     "type": "main", "index": 0 }]]
+    },
+    "Parse Report via CLI": {
+      "main": [[{ "node": "Parse CLI JSON Output",    "type": "main", "index": 0 }]]
+    },
+    "Parse CLI JSON Output": {
+      "main": [[{ "node": "Check Anomaly Thresholds", "type": "main", "index": 0 }]]
+    },
+    "Check Anomaly Thresholds": {
+      "main": [[{ "node": "Anomaly Detected?",        "type": "main", "index": 0 }]]
+    },
+    "Anomaly Detected?": {
+      "main": [
+        [{ "node": "Trigger Anomaly Alert",   "type": "main", "index": 0 }],
+        [{ "node": "Log Processing Result",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Anomaly Alert": {
+      "main": [[{ "node": "Log Processing Result",    "type": "main", "index": 0 }]]
+    }
+  }
+}

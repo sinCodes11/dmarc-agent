@@ -1,0 +1,22 @@
+{
+  "domains": [
+    {
+      "domain": "example.com",
+      "owner": "Example Corp",
+      "contact_email": "it@example.com",
+      "priority": "high",
+      "dkim_selector": null,
+      "last_scan": null,
+      "last_risk_level": null
+    },
+    {
+      "domain": "example.org",
+      "owner": "Example Org",
+      "contact_email": "admin@example.org",
+      "priority": "normal",
+      "dkim_selector": "google",
+      "last_scan": null,
+      "last_risk_level": null
+    }
+  ]
+}

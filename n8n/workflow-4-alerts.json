@@ -1,0 +1,175 @@
+{
+  "name": "DMARC — Workflow 4: Alert and Notification",
+  "nodes": [
+    {
+      "id": "alert-webhook",
+      "name": "Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "dmarc-alert",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dmarc-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-alert",
+      "name": "Parse Alert Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst alert_type = body.alert_type || 'unknown';\nconst domain = body.domain || '';\nconst risk_level = body.risk_level || 'UNKNOWN';\nconst previous_risk = body.previous_risk_level || null;\nconst details = body.details || [];\n\n// Map alert_type + risk_level to severity\nlet severity = 'info';\nif (alert_type === 'risk_level_change') {\n  if (risk_level === 'HIGH') severity = 'critical';\n  else if (risk_level === 'MEDIUM' && previous_risk === 'LOW') severity = 'warning';\n} else if (alert_type === 'anomaly_detected') {\n  severity = 'warning';\n}\n\nreturn [{ json: { alert_type, domain, risk_level, previous_risk, details, severity } }];"
+      }
+    },
+    {
+      "id": "route-severity",
+      "name": "Route by Severity",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [500, 300],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "critical",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "outputKey": "critical"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "warning",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "outputKey": "warning"
+            }
+          ]
+        },
+        "fallbackOutput": "none"
+      }
+    },
+    {
+      "id": "slack-critical",
+      "name": "Slack — Critical Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 150],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ blocks: [ { type: 'header', text: { type: 'plain_text', text: `🚨 DMARC Critical Alert: ${$json.domain}` } }, { type: 'section', fields: [ { type: 'mrkdwn', text: `*Severity:*\\n${$json.severity.toUpperCase()}` }, { type: 'mrkdwn', text: `*Risk Level:*\\n${$json.risk_level}` }, { type: 'mrkdwn', text: `*Domain:*\\n${$json.domain}` }, { type: 'mrkdwn', text: `*Alert Type:*\\n${$json.alert_type}` } ] } ] }) }}"
+      }
+    },
+    {
+      "id": "slack-warning",
+      "name": "Slack — Warning Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `⚠️ DMARC Warning — *${$json.domain}* — Risk: ${$json.risk_level} — Type: ${$json.alert_type}` }) }}"
+      }
+    },
+    {
+      "id": "email-critical",
+      "name": "Email — Critical Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [700, 450],
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.ALERT_EMAIL }}",
+        "subject": "=[DMARC Alert] CRITICAL — {{ $json.domain }} — {{ $json.alert_type }}",
+        "emailType": "text",
+        "message": "=DMARC Security Alert\n\nDomain: {{ $json.domain }}\nSeverity: {{ $json.severity.toUpperCase() }}\nRisk Level: {{ $json.risk_level }}\nAlert Type: {{ $json.alert_type }}\nTime: {{ new Date().toISOString() }}\n\nDetails:\n{{ $json.details.join('\\n') }}\n\n---\nDMARC Security Agent | Automated Alert"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "DMARC SMTP Account"
+        }
+      }
+    },
+    {
+      "id": "log-alert",
+      "name": "Log Alert Delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "jsCode": "console.log('Alert delivered:', $json.alert_type, $json.domain, $json.severity, new Date().toISOString());\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"delivered\", \"alert_type\": $json.alert_type, \"domain\": $json.domain }"
+      }
+    }
+  ],
+  "connections": {
+    "Alert Webhook": {
+      "main": [[{ "node": "Parse Alert Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse Alert Payload": {
+      "main": [[{ "node": "Route by Severity", "type": "main", "index": 0 }]]
+    },
+    "Route by Severity": {
+      "main": [
+        [{ "node": "Slack — Critical Alert", "type": "main", "index": 0 }],
+        [{ "node": "Slack — Warning Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack — Critical Alert": {
+      "main": [
+        [{ "node": "Email — Critical Alert", "type": "main", "index": 0 }],
+        [{ "node": "Log Alert Delivery", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack — Warning Alert": {
+      "main": [[{ "node": "Log Alert Delivery", "type": "main", "index": 0 }]]
+    },
+    "Email — Critical Alert": {
+      "main": [[{ "node": "Log Alert Delivery", "type": "main", "index": 0 }]]
+    },
+    "Log Alert Delivery": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["dmarc", "alerts", "notifications"],
+  "notes": "Workflow 4: Alert and Notification.\n\nAccepts alert events from other workflows via webhook:\n  POST /webhook/dmarc-alert\n  {\n    \"alert_type\": \"risk_level_change\",\n    \"domain\": \"example.com\",\n    \"risk_level\": \"HIGH\",\n    \"previous_risk_level\": \"MEDIUM\",\n    \"details\": [\"SPF record changed\", \"DMARC policy downgraded\"]\n  }\n\nAlert types:\n  risk_level_change, anomaly_detected, configuration_change,\n  report_processing_failure, scan_failure\n\nRequired env vars:\n  SLACK_WEBHOOK_URL, SMTP_FROM, ALERT_EMAIL\n\nRequired n8n credentials:\n  smtp-credentials — SMTP Account"
+}
