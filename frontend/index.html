@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DMARC SaaS | Email Security Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-6xl mx-auto px-6 py-10 md:py-16">
+      <section class="panel rounded-2xl p-8 md:p-12">
+        <p class="uppercase tracking-[0.22em] text-blue-300 text-xs md:text-sm">DMARC Risk Scanner</p>
+        <h1 class="mt-3 text-4xl md:text-6xl font-semibold leading-tight">Is Your Business Email Protected?</h1>
+        <p class="mt-5 text-lg text-slate-200 max-w-2xl">Check your domain's email security in 30 seconds - free.</p>
+
+        <form id="scan-form" class="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
+          <input
+            id="domain-input"
+            type="text"
+            placeholder="example.com"
+            class="w-full rounded-xl px-5 py-4 bg-slate-900/90 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+            required
+          />
+          <button
+            id="scan-button"
+            type="submit"
+            class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-8 py-4 text-lg transition-colors"
+          >
+            Check My Domain
+          </button>
+        </form>
+
+        <div id="loading-row" class="hidden mt-4 flex items-center gap-3 text-blue-200">
+          <span class="pulse inline-block w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+          <span>Scanning domain...</span>
+        </div>
+        <p id="scan-error" class="hidden mt-3 text-red-300 text-sm"></p>
+      </section>
+
+      <section class="mt-10 grid md:grid-cols-3 gap-4">
+        <div class="panel rounded-xl p-5">
+          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 1</p>
+          <h2 class="text-xl font-semibold mt-2">Enter domain</h2>
+          <p class="text-slate-300 mt-2 text-sm">Type your root domain and start a live DNS security check.</p>
+        </div>
+        <div class="panel rounded-xl p-5">
+          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 2</p>
+          <h2 class="text-xl font-semibold mt-2">See your risk score</h2>
+          <p class="text-slate-300 mt-2 text-sm">Instantly view SPF, DKIM, and DMARC posture by severity.</p>
+        </div>
+        <div class="panel rounded-xl p-5">
+          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 3</p>
+          <h2 class="text-xl font-semibold mt-2">Get your free report</h2>
+          <p class="text-slate-300 mt-2 text-sm">Email a shareable remediation report to your team.</p>
+        </div>
+      </section>
+
+      <section class="mt-10 panel rounded-2xl p-6 md:p-8">
+        <h2 class="text-2xl md:text-3xl font-semibold">Why teams are fixing this now</h2>
+        <div class="mt-6 grid md:grid-cols-3 gap-4">
+          <div class="rounded-xl bg-red-950/40 border border-red-500/30 p-5">
+            <p class="text-3xl font-semibold text-red-200">$2.9B</p>
+            <p class="text-sm text-red-100/90 mt-2">FBI reported Business Email Compromise losses in 2023.</p>
+          </div>
+          <div class="rounded-xl bg-amber-950/40 border border-amber-500/30 p-5">
+            <p class="text-3xl font-semibold text-amber-200">43%</p>
+            <p class="text-sm text-amber-100/90 mt-2">of observed attacks target SMB organizations.</p>
+          </div>
+          <div class="rounded-xl bg-blue-950/40 border border-blue-500/30 p-5">
+            <p class="text-3xl font-semibold text-blue-200">2024</p>
+            <p class="text-sm text-blue-100/90 mt-2">Google and Yahoo sender requirements elevated DMARC enforcement.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-10 text-center text-xs text-slate-400">DMARC SaaS - Fast domain posture checks for security teams.</footer>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+:root {
+  --navy-950: #0f172a;
+  --navy-900: #111827;
+  --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
+  --slate-100: #f1f5f9;
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(59, 130, 246, 0.2), transparent 36%),
+    radial-gradient(circle at 90% 20%, rgba(96, 165, 250, 0.18), transparent 32%),
+    linear-gradient(180deg, var(--navy-900), var(--navy-950));
+  min-height: 100vh;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.glow-btn {
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 16px 30px -16px rgba(59, 130, 246, 0.9);
+}
+
+.pulse {
+  animation: pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.risk-HIGH {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.45);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.risk-MEDIUM {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.45);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.risk-LOW {
+  color: #bbf7d0;
+  background: rgba(20, 83, 45, 0.45);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+}
