@@ -5,4 +5,3 @@ python-multipart
 python-dotenv
 email-validator
 resend
-./dmarc_agent_src
