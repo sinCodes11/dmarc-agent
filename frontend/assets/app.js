@@ -228,6 +228,14 @@ function initResultsPage() {
         });
       }
 
+      // Business impact explanation
+      const impactText = byId("business-impact-text");
+      const impactSection = byId("business-impact-section");
+      if (result.business_impact && impactText && impactSection) {
+        impactText.textContent = result.business_impact;
+        impactSection.classList.remove("hidden");
+      }
+
       byId("results-loading")?.classList.add("hidden");
       byId("results-content")?.classList.remove("hidden");
 
