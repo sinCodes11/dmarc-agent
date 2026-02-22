@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.emailer import EmailConfigError, send_report
@@ -191,5 +191,17 @@ async def create_checkout(req: CheckoutRequest):
 
 
 frontend_path = Path(__file__).resolve().parent.parent / "frontend"
+
+
+@app.get("/pricing")
+async def pricing_page():
+    return FileResponse(str(frontend_path / "pricing.html"))
+
+
+@app.get("/success")
+async def success_page():
+    return FileResponse(str(frontend_path / "success.html"))
+
+
 if frontend_path.exists():
     app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
