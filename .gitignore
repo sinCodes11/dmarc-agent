@@ -24,8 +24,11 @@ secrets/
 
 # Generated reports
 reports/
-*.html
+reports/*.html
 *.pdf
+
+# Allow frontend HTML files
+!frontend/*.html
 
 # OS
 .DS_Store

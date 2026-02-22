@@ -43,3 +43,15 @@ class ErrorResponse(BaseModel):
     error: str
     message: str
     details: dict[str, Any] | None = None
+
+
+class CheckoutRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    price_id: str
+    domain: str | None = None
+    email: EmailStr | None = None
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
