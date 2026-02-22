@@ -231,22 +231,23 @@
     </main>
 
     <script>
-      const PRICES = {
-        starter: {
-          monthly: { id: 'price_1T3Tb94A2UIKbtDriCzl9uqH', display: '$49', billed: '' },
-          annual:  { id: 'price_1T3Thf4A2UIKbtDr3VxJVOxR', display: '$41', billed: 'Billed $490/year' },
-        },
-        growth: {
-          monthly: { id: 'price_1T3TkQ4A2UIKbtDrIQORsxnQ', display: '$149', billed: '' },
-          annual:  { id: 'price_1T3Tkp4A2UIKbtDrqSAHd9Oo', display: '$124', billed: 'Billed $1,490/year' },
-        },
-        business: {
-          monthly: { id: 'price_1T3Tox4A2UIKbtDrr7FeN5SD', display: '$349', billed: '' },
-          annual:  { id: 'price_1T3TpL4A2UIKbtDr6opWbLiy', display: '$291', billed: 'Billed $3,490/year' },
-        },
+      const DISPLAY = {
+        starter:  { monthly: { price: '$49',  billed: '' },            annual: { price: '$41',  billed: 'Billed $490/year' } },
+        growth:   { monthly: { price: '$149', billed: '' },            annual: { price: '$124', billed: 'Billed $1,490/year' } },
+        business: { monthly: { price: '$349', billed: '' },            annual: { price: '$291', billed: 'Billed $3,490/year' } },
       };
 
       let period = 'monthly';
+      let PRICES = {};
+
+      async function loadPrices() {
+        try {
+          const res = await fetch('/api/prices');
+          PRICES = await res.json();
+        } catch {
+          // buttons will show error on click if prices failed to load
+        }
+      }
 
       function setPeriod(p) {
         period = p;
@@ -260,25 +261,27 @@
           monthly.className = 'toggle-inactive rounded-lg px-5 py-2 text-sm font-medium transition-all';
         }
         for (const plan of ['starter', 'growth', 'business']) {
-          const data = PRICES[plan][p];
-          document.getElementById(`price-${plan}`).textContent = data.display;
-          document.getElementById(`period-${plan}`).textContent = p === 'annual' ? '/month' : '/month';
-          document.getElementById(`billed-${plan}`).textContent = data.billed;
+          const d = DISPLAY[plan][p];
+          document.getElementById(`price-${plan}`).textContent = d.price;
+          document.getElementById(`billed-${plan}`).textContent = d.billed;
         }
       }
 
       async function checkout(plan) {
-        const data = PRICES[plan][period];
+        const priceId = PRICES[plan]?.[period];
+        if (!priceId) {
+          alert('Pricing not available. Please refresh and try again.');
+          return;
+        }
         const btn = document.getElementById(`btn-${plan}`);
         const original = btn.textContent;
         btn.textContent = 'Redirecting...';
         btn.disabled = true;
-
         try {
           const res = await fetch('/api/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ price_id: data.id }),
+            body: JSON.stringify({ price_id: priceId }),
           });
           if (!res.ok) throw new Error('Checkout failed');
           const { checkout_url } = await res.json();
@@ -289,6 +292,8 @@
           alert('Something went wrong. Please try again.');
         }
       }
+
+      loadPrices();
     </script>
   </body>
 </html>

@@ -22,16 +22,25 @@ load_dotenv()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-_ALLOWED_PRICE_IDS = {
-    "price_1T3Tb94A2UIKbtDriCzl9uqH",  # Starter monthly
-    "price_1T3Thf4A2UIKbtDr3VxJVOxR",  # Starter annual
-    "price_1T3TkQ4A2UIKbtDrIQORsxnQ",  # Growth monthly
-    "price_1T3Tkp4A2UIKbtDrqSAHd9Oo",  # Growth annual
-    "price_1T3Tox4A2UIKbtDrr7FeN5SD",  # Business monthly
-    "price_1T3TpL4A2UIKbtDr6opWbLiy",  # Business annual
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://sentrydmarc.com")
+
+_PRICE_IDS = {
+    "starter": {
+        "monthly": os.getenv("STRIPE_PRICE_STARTER_MONTHLY", ""),
+        "annual":  os.getenv("STRIPE_PRICE_STARTER_ANNUAL", ""),
+    },
+    "growth": {
+        "monthly": os.getenv("STRIPE_PRICE_GROWTH_MONTHLY", ""),
+        "annual":  os.getenv("STRIPE_PRICE_GROWTH_ANNUAL", ""),
+    },
+    "business": {
+        "monthly": os.getenv("STRIPE_PRICE_BUSINESS_MONTHLY", ""),
+        "annual":  os.getenv("STRIPE_PRICE_BUSINESS_ANNUAL", ""),
+    },
 }
 
-APP_BASE_URL = os.getenv("APP_BASE_URL", "https://sentrydmarc.com")
+def _allowed_price_ids() -> set[str]:
+    return {pid for tier in _PRICE_IDS.values() for pid in tier.values() if pid}
 
 app = FastAPI(title="DMARC SaaS API", version="0.1.0")
 
@@ -156,11 +165,16 @@ async def send_scan_report(scan_id: str, req: ReportRequest):
     }
 
 
+@app.get("/api/prices")
+async def get_prices() -> dict:
+    return _PRICE_IDS
+
+
 @app.post("/api/checkout", response_model=CheckoutResponse)
 async def create_checkout(req: CheckoutRequest):
     if not stripe.api_key:
         raise ApiError(500, "config_error", "Payment processing not configured")
-    if req.price_id not in _ALLOWED_PRICE_IDS:
+    if req.price_id not in _allowed_price_ids():
         raise ApiError(400, "invalid_price", "Invalid price ID")
     try:
         session = stripe.checkout.Session.create(
