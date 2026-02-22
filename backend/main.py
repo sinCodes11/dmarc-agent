@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import stripe
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -14,10 +15,23 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.emailer import EmailConfigError, send_report
-from backend.models import ErrorResponse, ReportRequest, ReportResponse, ScanRequest, ScanResponse
+from backend.models import CheckoutRequest, CheckoutResponse, ErrorResponse, ReportRequest, ReportResponse, ScanRequest, ScanResponse
 from backend.scanner import render_html_report, run_scan
 
 load_dotenv()
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+_ALLOWED_PRICE_IDS = {
+    "price_1T3Tb94A2UIKbtDriCzl9uqH",  # Starter monthly
+    "price_1T3Thf4A2UIKbtDr3VxJVOxR",  # Starter annual
+    "price_1T3TkQ4A2UIKbtDrIQORsxnQ",  # Growth monthly
+    "price_1T3Tkp4A2UIKbtDrqSAHd9Oo",  # Growth annual
+    "price_1T3Tox4A2UIKbtDrr7FeN5SD",  # Business monthly
+    "price_1T3TpL4A2UIKbtDr6opWbLiy",  # Business annual
+}
+
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://sentrydmarc.com")
 
 app = FastAPI(title="DMARC SaaS API", version="0.1.0")
 
@@ -140,6 +154,26 @@ async def send_scan_report(scan_id: str, req: ReportRequest):
         "success": True,
         "message": f"Report sent to {req.email}",
     }
+
+
+@app.post("/api/checkout", response_model=CheckoutResponse)
+async def create_checkout(req: CheckoutRequest):
+    if not stripe.api_key:
+        raise ApiError(500, "config_error", "Payment processing not configured")
+    if req.price_id not in _ALLOWED_PRICE_IDS:
+        raise ApiError(400, "invalid_price", "Invalid price ID")
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": req.price_id, "quantity": 1}],
+            success_url=f"{APP_BASE_URL}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{APP_BASE_URL}/pricing",
+            customer_email=str(req.email) if req.email else None,
+            metadata={"domain": req.domain or ""},
+        )
+    except stripe.StripeError as exc:
+        raise ApiError(502, "stripe_error", "Payment session creation failed", {"reason": str(exc)})
+    return {"checkout_url": session.url}
 
 
 frontend_path = Path(__file__).resolve().parent.parent / "frontend"

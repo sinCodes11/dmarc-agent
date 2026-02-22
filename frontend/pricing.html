@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentryDMARC | Pricing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+    <style>
+      .popular-ring {
+        border: 1px solid rgba(96, 165, 250, 0.6);
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2), 0 0 32px -8px rgba(59, 130, 246, 0.35);
+      }
+      .toggle-active {
+        background: #3b82f6;
+        color: #fff;
+      }
+      .toggle-inactive {
+        background: transparent;
+        color: #94a3b8;
+      }
+      .check-icon::before {
+        content: "✓";
+        color: #60a5fa;
+        font-weight: 600;
+        margin-right: 0.5rem;
+      }
+    </style>
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-6xl mx-auto px-6 py-10 md:py-16">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-10">
+        <a href="/" class="text-blue-300 text-sm hover:text-blue-200 transition-colors">← Back to Scanner</a>
+        <span class="text-slate-400 text-sm">SentryDMARC</span>
+      </div>
+
+      <!-- Hero -->
+      <div class="text-center mb-10">
+        <p class="uppercase tracking-[0.22em] text-blue-300 text-xs md:text-sm">Pricing</p>
+        <h1 class="mt-3 text-4xl md:text-5xl font-semibold leading-tight">Simple, Transparent Pricing</h1>
+        <p class="mt-4 text-lg text-slate-300 max-w-xl mx-auto">No setup fees. Cancel anytime. Every plan includes the free DMARC scan tool.</p>
+      </div>
+
+      <!-- Billing Toggle -->
+      <div class="flex items-center justify-center gap-2 mb-10">
+        <div class="panel rounded-xl p-1 flex gap-1 inline-flex">
+          <button
+            id="toggle-monthly"
+            onclick="setPeriod('monthly')"
+            class="toggle-active rounded-lg px-5 py-2 text-sm font-medium transition-all"
+          >Monthly</button>
+          <button
+            id="toggle-annual"
+            onclick="setPeriod('annual')"
+            class="toggle-inactive rounded-lg px-5 py-2 text-sm font-medium transition-all"
+          >Annual <span class="ml-1 text-green-400 text-xs font-semibold">Save 17%</span></button>
+        </div>
+      </div>
+
+      <!-- Pricing Cards -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        <!-- Starter -->
+        <div class="panel rounded-2xl p-6 flex flex-col">
+          <div>
+            <p class="text-blue-300 text-xs uppercase tracking-wider font-semibold">Starter</p>
+            <div class="mt-3 flex items-end gap-1">
+              <span id="price-starter" class="text-4xl font-bold">$49</span>
+              <span id="period-starter" class="text-slate-400 text-sm mb-1">/month</span>
+            </div>
+            <p id="billed-starter" class="text-xs text-slate-500 mt-1 min-h-[1rem]"></p>
+            <p class="mt-3 text-slate-300 text-sm">For businesses securing their primary domain.</p>
+
+            <ul class="mt-5 space-y-2 text-sm text-slate-300">
+              <li class="check-icon">1 domain</li>
+              <li class="check-icon">3 team members</li>
+              <li class="check-icon">DMARC monitoring</li>
+              <li class="check-icon">SPF &amp; DKIM checks</li>
+              <li class="check-icon">Weekly email reports</li>
+              <li class="check-icon">Real-time alerts</li>
+            </ul>
+          </div>
+          <div class="mt-8">
+            <button
+              id="btn-starter"
+              onclick="checkout('starter')"
+              class="w-full rounded-xl border border-blue-500/50 hover:border-blue-400 text-blue-300 hover:text-white font-semibold px-6 py-3 text-sm transition-all"
+            >Get Started</button>
+          </div>
+        </div>
+
+        <!-- Growth (Most Popular) -->
+        <div class="popular-ring rounded-2xl p-6 flex flex-col" style="background: rgba(15,23,42,0.88); backdrop-filter: blur(8px);">
+          <div>
+            <div class="flex items-center justify-between">
+              <p class="text-blue-300 text-xs uppercase tracking-wider font-semibold">Growth</p>
+              <span class="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded-full px-2.5 py-0.5 font-semibold">Most Popular</span>
+            </div>
+            <div class="mt-3 flex items-end gap-1">
+              <span id="price-growth" class="text-4xl font-bold">$149</span>
+              <span id="period-growth" class="text-slate-400 text-sm mb-1">/month</span>
+            </div>
+            <p id="billed-growth" class="text-xs text-slate-500 mt-1 min-h-[1rem]"></p>
+            <p class="mt-3 text-slate-300 text-sm">For growing teams managing multiple domains.</p>
+
+            <ul class="mt-5 space-y-2 text-sm text-slate-300">
+              <li class="check-icon">5 domains</li>
+              <li class="check-icon">10 team members</li>
+              <li class="check-icon">Everything in Starter</li>
+              <li class="check-icon">DMARC enforcement automation</li>
+              <li class="check-icon">Forensic reports</li>
+              <li class="check-icon">Custom DNS wizard</li>
+              <li class="check-icon">Slack alerts</li>
+            </ul>
+          </div>
+          <div class="mt-8">
+            <button
+              id="btn-growth"
+              onclick="checkout('growth')"
+              class="glow-btn w-full rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3 text-sm transition-all"
+            >Get Started</button>
+          </div>
+        </div>
+
+        <!-- Business -->
+        <div class="panel rounded-2xl p-6 flex flex-col">
+          <div>
+            <p class="text-blue-300 text-xs uppercase tracking-wider font-semibold">Business</p>
+            <div class="mt-3 flex items-end gap-1">
+              <span id="price-business" class="text-4xl font-bold">$349</span>
+              <span id="period-business" class="text-slate-400 text-sm mb-1">/month</span>
+            </div>
+            <p id="billed-business" class="text-xs text-slate-500 mt-1 min-h-[1rem]"></p>
+            <p class="mt-3 text-slate-300 text-sm">For organizations needing enterprise-grade protection.</p>
+
+            <ul class="mt-5 space-y-2 text-sm text-slate-300">
+              <li class="check-icon">15 domains</li>
+              <li class="check-icon">Unlimited team members</li>
+              <li class="check-icon">Everything in Growth</li>
+              <li class="check-icon">White-glove onboarding</li>
+              <li class="check-icon">Dedicated CSM</li>
+              <li class="check-icon">99.9% SLA</li>
+              <li class="check-icon">API access</li>
+              <li class="check-icon">SIEM integration</li>
+            </ul>
+          </div>
+          <div class="mt-8">
+            <button
+              id="btn-business"
+              onclick="checkout('business')"
+              class="w-full rounded-xl border border-blue-500/50 hover:border-blue-400 text-blue-300 hover:text-white font-semibold px-6 py-3 text-sm transition-all"
+            >Get Started</button>
+          </div>
+        </div>
+
+        <!-- MSP -->
+        <div class="panel rounded-2xl p-6 flex flex-col">
+          <div>
+            <p class="text-blue-300 text-xs uppercase tracking-wider font-semibold">MSP / Agency</p>
+            <div class="mt-3">
+              <span class="text-4xl font-bold">Custom</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1 min-h-[1rem]">From $500/month</p>
+            <p class="mt-3 text-slate-300 text-sm">For MSPs managing email security across their entire client base.</p>
+
+            <ul class="mt-5 space-y-2 text-sm text-slate-300">
+              <li class="check-icon">Unlimited domains</li>
+              <li class="check-icon">Unlimited team members</li>
+              <li class="check-icon">Everything in Business</li>
+              <li class="check-icon">White-label dashboard</li>
+              <li class="check-icon">Multi-client management</li>
+              <li class="check-icon">Co-branded reports</li>
+              <li class="check-icon">30–40% partner margin</li>
+              <li class="check-icon">Partner success manager</li>
+            </ul>
+          </div>
+          <div class="mt-8">
+            <a
+              href="mailto:partners@sentrydmarc.com?subject=MSP Partner Inquiry"
+              class="block w-full rounded-xl border border-slate-500/50 hover:border-slate-400 text-slate-300 hover:text-white font-semibold px-6 py-3 text-sm transition-all text-center"
+            >Contact Us</a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Trust bar -->
+      <div class="mt-12 panel rounded-2xl p-6 md:p-8">
+        <div class="grid md:grid-cols-3 gap-6 text-center text-sm text-slate-400">
+          <div>
+            <p class="text-white font-semibold text-base mb-1">No credit card traps</p>
+            <p>Cancel anytime. No long-term contracts on monthly plans.</p>
+          </div>
+          <div>
+            <p class="text-white font-semibold text-base mb-1">Setup in under 30 minutes</p>
+            <p>Guided DNS wizard walks you through every step.</p>
+          </div>
+          <div>
+            <p class="text-white font-semibold text-base mb-1">Built for non-technical teams</p>
+            <p>No IT department required. Plain English alerts and reports.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="mt-10 panel rounded-2xl p-6 md:p-8">
+        <h2 class="text-xl font-semibold mb-6">Common Questions</h2>
+        <div class="grid md:grid-cols-2 gap-6 text-sm">
+          <div>
+            <p class="font-semibold text-slate-100 mb-1">What counts as a domain?</p>
+            <p class="text-slate-400">Each root domain (e.g. example.com) counts as one domain. Subdomains are included automatically.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-100 mb-1">Can I upgrade or downgrade anytime?</p>
+            <p class="text-slate-400">Yes. Plan changes take effect at the next billing cycle. Upgrades are prorated immediately.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-100 mb-1">What is white-glove onboarding?</p>
+            <p class="text-slate-400">Our team configures your SPF, DKIM, and DMARC records for you. No DNS experience needed.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-100 mb-1">Do you offer a free trial?</p>
+            <p class="text-slate-400">The free DMARC scan on our homepage gives you a full risk report at no cost. Paid plans start day one.</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="mt-10 text-center text-xs text-slate-400">SentryDMARC — Fast domain posture checks for security teams.</footer>
+    </main>
+
+    <script>
+      const PRICES = {
+        starter: {
+          monthly: { id: 'price_1T3Tb94A2UIKbtDriCzl9uqH', display: '$49', billed: '' },
+          annual:  { id: 'price_1T3Thf4A2UIKbtDr3VxJVOxR', display: '$41', billed: 'Billed $490/year' },
+        },
+        growth: {
+          monthly: { id: 'price_1T3TkQ4A2UIKbtDrIQORsxnQ', display: '$149', billed: '' },
+          annual:  { id: 'price_1T3Tkp4A2UIKbtDrqSAHd9Oo', display: '$124', billed: 'Billed $1,490/year' },
+        },
+        business: {
+          monthly: { id: 'price_1T3Tox4A2UIKbtDrr7FeN5SD', display: '$349', billed: '' },
+          annual:  { id: 'price_1T3TpL4A2UIKbtDr6opWbLiy', display: '$291', billed: 'Billed $3,490/year' },
+        },
+      };
+
+      let period = 'monthly';
+
+      function setPeriod(p) {
+        period = p;
+        const monthly = document.getElementById('toggle-monthly');
+        const annual = document.getElementById('toggle-annual');
+        if (p === 'monthly') {
+          monthly.className = 'toggle-active rounded-lg px-5 py-2 text-sm font-medium transition-all';
+          annual.className = 'toggle-inactive rounded-lg px-5 py-2 text-sm font-medium transition-all';
+        } else {
+          annual.className = 'toggle-active rounded-lg px-5 py-2 text-sm font-medium transition-all';
+          monthly.className = 'toggle-inactive rounded-lg px-5 py-2 text-sm font-medium transition-all';
+        }
+        for (const plan of ['starter', 'growth', 'business']) {
+          const data = PRICES[plan][p];
+          document.getElementById(`price-${plan}`).textContent = data.display;
+          document.getElementById(`period-${plan}`).textContent = p === 'annual' ? '/month' : '/month';
+          document.getElementById(`billed-${plan}`).textContent = data.billed;
+        }
+      }
+
+      async function checkout(plan) {
+        const data = PRICES[plan][period];
+        const btn = document.getElementById(`btn-${plan}`);
+        const original = btn.textContent;
+        btn.textContent = 'Redirecting...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price_id: data.id }),
+          });
+          if (!res.ok) throw new Error('Checkout failed');
+          const { checkout_url } = await res.json();
+          window.location.href = checkout_url;
+        } catch {
+          btn.textContent = original;
+          btn.disabled = false;
+          alert('Something went wrong. Please try again.');
+        }
+      }
+    </script>
+  </body>
+</html>
