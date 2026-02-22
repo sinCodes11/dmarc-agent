@@ -6,3 +6,6 @@ python-dotenv
 email-validator
 resend
 stripe
+dnspython
+rich
+click
