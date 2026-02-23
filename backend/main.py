@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.emailer import EmailConfigError, send_report
+from backend.hubspot import push_lead
 from backend.models import CheckoutRequest, CheckoutResponse, ErrorResponse, ReportRequest, ReportResponse, ScanRequest, ScanResponse
 from backend.scanner import render_html_report, run_scan
 
@@ -158,6 +159,8 @@ async def send_scan_report(scan_id: str, req: ReportRequest):
         raise ApiError(500, "email_config_error", "Email settings are incomplete", {"reason": str(exc)})
     except Exception as exc:
         raise ApiError(502, "email_delivery_error", "Failed to send report", {"reason": str(exc)})
+
+    push_lead(str(req.email), req.company, domain, result)
 
     return {
         "success": True,
