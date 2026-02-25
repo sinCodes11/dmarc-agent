@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+logger = logging.getLogger(__name__)
+
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+_db_configured = bool(DATABASE_URL)
 
 if not DATABASE_URL:
-    # Keeps module importable for non-DB endpoints, while failing fast when used.
+    # Keeps module importable for non-DB endpoints; DB routes will fail gracefully.
     DATABASE_URL = "postgresql+asyncpg://invalid:invalid@localhost/invalid"
 
 engine = create_async_engine(DATABASE_URL, future=True, pool_pre_ping=True)
@@ -26,6 +30,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
+    if not _db_configured:
+        logger.warning("DATABASE_URL not set — skipping database initialisation. Auth and dashboard routes will not work.")
+        return
+
     from backend import db_models  # noqa: F401
 
     async with engine.begin() as conn:
