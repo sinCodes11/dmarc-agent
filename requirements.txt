@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-pydantic
+pydantic[email]
 python-multipart
 python-dotenv
 email-validator
@@ -9,3 +9,10 @@ stripe
 dnspython
 rich
 click
+sqlalchemy[asyncio]
+asyncpg
+alembic
+passlib[bcrypt]
+bcrypt<5
+python-jose[cryptography]
+apscheduler
