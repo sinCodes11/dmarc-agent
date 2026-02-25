@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);} 
+      gtag('js', new Date());
+      gtag('config', 'G-K03JBNND58');
+    </script>
+    <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentryDMARC | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-7">
+      <header class="panel rounded-2xl p-6 md:p-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl md:text-4xl font-semibold">SentryDMARC</h1>
+          <p class="text-slate-300 text-sm mt-2">Monitor and improve domain email security posture.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="plan-badge" class="px-4 py-2 rounded-xl border border-blue-500/40 text-blue-200 text-sm">Starter Plan</span>
+          <a href="/settings" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Settings</a>
+          <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
+        </div>
+      </header>
+
+      <p id="dashboard-error" class="hidden text-red-400 text-sm"></p>
+
+      <section class="panel rounded-2xl p-6 md:p-7">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <h2 class="text-2xl font-semibold">Your Domains</h2>
+          <span id="domain-limit" class="text-sm text-slate-300">0 of 1 domains</span>
+        </div>
+        <p id="empty-state" class="hidden text-slate-300 text-sm mt-3">No domains yet - add your first domain below.</p>
+        <div id="domains-wrap" class="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <section class="panel rounded-2xl p-6 md:p-7">
+        <h2 class="text-xl font-semibold">Add Domain</h2>
+        <form id="add-domain-form" class="mt-4 flex flex-col md:flex-row gap-3">
+          <input id="domain-input" type="text" placeholder="example.com" class="flex-1 rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          <button id="add-domain-btn" type="submit" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Add Domain</button>
+        </form>
+        <p id="add-domain-error" class="hidden mt-3 text-red-400 text-sm"></p>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+    <script src="/assets/auth.js"></script>
+    <script src="/assets/dashboard.js"></script>
+  </body>
+</html>

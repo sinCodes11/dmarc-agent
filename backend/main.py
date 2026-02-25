@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -14,36 +15,52 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.database import init_db
 from backend.emailer import EmailConfigError, send_report
 from backend.hubspot import push_lead
 from backend.models import CheckoutRequest, CheckoutResponse, ErrorResponse, ReportRequest, ReportResponse, ScanRequest, ScanResponse
+from backend.routes.auth_routes import router as auth_router
+from backend.routes.user_routes import router as user_router
+from backend.routes.webhook_routes import router as webhook_router
 from backend.scanner import render_html_report, run_scan
+from backend.scheduler import start_scheduler, stop_scheduler
 
 load_dotenv()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://sentrydmarc.com")
 
 _PRICE_IDS = {
     "starter": {
         "monthly": os.getenv("STRIPE_PRICE_STARTER_MONTHLY", ""),
-        "annual":  os.getenv("STRIPE_PRICE_STARTER_ANNUAL", ""),
+        "annual": os.getenv("STRIPE_PRICE_STARTER_ANNUAL", ""),
     },
     "growth": {
         "monthly": os.getenv("STRIPE_PRICE_GROWTH_MONTHLY", ""),
-        "annual":  os.getenv("STRIPE_PRICE_GROWTH_ANNUAL", ""),
+        "annual": os.getenv("STRIPE_PRICE_GROWTH_ANNUAL", ""),
     },
     "business": {
         "monthly": os.getenv("STRIPE_PRICE_BUSINESS_MONTHLY", ""),
-        "annual":  os.getenv("STRIPE_PRICE_BUSINESS_ANNUAL", ""),
+        "annual": os.getenv("STRIPE_PRICE_BUSINESS_ANNUAL", ""),
     },
 }
+
 
 def _allowed_price_ids() -> set[str]:
     return {pid for tier in _PRICE_IDS.values() for pid in tier.values() if pid}
 
-app = FastAPI(title="DMARC SaaS API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await init_db()
+    start_scheduler()
+    try:
+        yield
+    finally:
+        stop_scheduler()
+
+
+app = FastAPI(title="DMARC SaaS API", version="0.1.0", lifespan=lifespan)
 
 origins_env = os.getenv("ALLOWED_ORIGINS", "*").strip()
 allow_origins = [o.strip() for o in origins_env.split(",") if o.strip()] or ["*"]
@@ -125,7 +142,7 @@ async def create_scan(req: ScanRequest):
     try:
         result_dict = run_scan(req.domain)
     except Exception as exc:
-        raise ApiError(500, "scan_error", "Failed to run scan", {"reason": str(exc)})
+        raise ApiError(500, "scan_error", "Failed to run scan", {"reason": str(exc)}) from exc
 
     created_at = _now()
     expires_at = created_at + SCAN_CACHE_TTL_SECONDS
@@ -156,9 +173,9 @@ async def send_scan_report(scan_id: str, req: ReportRequest):
     try:
         send_report(req.email, domain, result, html_report)
     except EmailConfigError as exc:
-        raise ApiError(500, "email_config_error", "Email settings are incomplete", {"reason": str(exc)})
+        raise ApiError(500, "email_config_error", "Email settings are incomplete", {"reason": str(exc)}) from exc
     except Exception as exc:
-        raise ApiError(502, "email_delivery_error", "Failed to send report", {"reason": str(exc)})
+        raise ApiError(502, "email_delivery_error", "Failed to send report", {"reason": str(exc)}) from exc
 
     push_lead(str(req.email), req.company, domain, result)
 
@@ -189,9 +206,13 @@ async def create_checkout(req: CheckoutRequest):
             metadata={"domain": req.domain or ""},
         )
     except stripe.StripeError as exc:
-        raise ApiError(502, "stripe_error", "Payment session creation failed", {"reason": str(exc)})
+        raise ApiError(502, "stripe_error", "Payment session creation failed", {"reason": str(exc)}) from exc
     return {"checkout_url": session.url}
 
+
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(webhook_router)
 
 frontend_path = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -204,6 +225,41 @@ async def pricing_page():
 @app.get("/success")
 async def success_page():
     return FileResponse(str(frontend_path / "success.html"))
+
+
+@app.get("/login")
+async def login_page():
+    return FileResponse(str(frontend_path / "login.html"))
+
+
+@app.get("/signup")
+async def signup_page():
+    return FileResponse(str(frontend_path / "signup.html"))
+
+
+@app.get("/forgot-password")
+async def forgot_password_page():
+    return FileResponse(str(frontend_path / "forgot-password.html"))
+
+
+@app.get("/reset-password")
+async def reset_password_page():
+    return FileResponse(str(frontend_path / "reset-password.html"))
+
+
+@app.get("/dashboard")
+async def dashboard_page():
+    return FileResponse(str(frontend_path / "dashboard.html"))
+
+
+@app.get("/domain")
+async def domain_page():
+    return FileResponse(str(frontend_path / "domain.html"))
+
+
+@app.get("/settings")
+async def settings_page():
+    return FileResponse(str(frontend_path / "settings.html"))
 
 
 if frontend_path.exists():

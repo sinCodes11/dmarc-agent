@@ -249,6 +249,7 @@
 
       let period = 'monthly';
       let PRICES = {};
+      function qs(name) { return new URLSearchParams(window.location.search).get(name); }
 
       async function loadPrices() {
         try {
@@ -288,10 +289,12 @@
         btn.textContent = 'Redirecting...';
         btn.disabled = true;
         try {
+          const email = qs('email') || localStorage.getItem('sentrydmarc_email') || null;
+          const domain = qs('domain') || null;
           const res = await fetch('/api/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ price_id: priceId }),
+            body: JSON.stringify({ price_id: priceId, email, domain }),
           });
           if (!res.ok) throw new Error('Checkout failed');
           const { checkout_url } = await res.json();

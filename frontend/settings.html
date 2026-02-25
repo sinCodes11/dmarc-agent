@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);} 
+      gtag('js', new Date());
+      gtag('config', 'G-K03JBNND58');
+    </script>
+    <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentryDMARC | Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-3xl mx-auto px-6 py-10 md:py-14 space-y-6">
+      <div class="flex items-center justify-between gap-3">
+        <a href="/dashboard" class="text-blue-300 hover:text-blue-200 text-sm">&larr; Dashboard</a>
+        <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
+      </div>
+
+      <section class="panel rounded-2xl p-6">
+        <h1 class="text-3xl font-semibold">Settings</h1>
+        <p class="text-slate-300 mt-2 text-sm">Manage account security and billing.</p>
+      </section>
+
+      <p id="settings-error" class="hidden text-red-400 text-sm"></p>
+
+      <section class="panel rounded-2xl p-6 space-y-3">
+        <h2 class="text-xl font-semibold">Account</h2>
+        <p class="text-sm text-slate-300">Email: <span id="user-email" class="text-slate-100">-</span></p>
+      </section>
+
+      <section class="panel rounded-2xl p-6">
+        <h2 class="text-xl font-semibold">Change Password</h2>
+        <form id="password-form" class="mt-4 space-y-4">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-slate-300">Current Password</span>
+            <input id="current-password" type="password" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-slate-300">New Password</span>
+            <input id="new-password" type="password" minlength="8" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-slate-300">Confirm New Password</span>
+            <input id="confirm-password" type="password" minlength="8" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          </label>
+          <button id="password-btn" type="submit" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Update Password</button>
+        </form>
+        <p id="password-success" class="hidden mt-3 text-green-400 text-sm">Password updated.</p>
+        <p id="password-error" class="hidden mt-3 text-red-400 text-sm"></p>
+      </section>
+
+      <section class="panel rounded-2xl p-6">
+        <h2 class="text-xl font-semibold">Plan & Billing</h2>
+        <p class="text-sm text-slate-300 mt-2">Current plan: <span id="plan-name" class="text-slate-100">Starter</span></p>
+        <button id="billing-btn" class="mt-4 rounded-xl border border-blue-500/50 hover:border-blue-400 text-blue-300 hover:text-white font-semibold px-6 py-3 text-sm">Manage Billing</button>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+    <script src="/assets/auth.js"></script>
+    <script>
+      function planLabel(plan) {
+        const p = String(plan || 'starter').toLowerCase();
+        return p.charAt(0).toUpperCase() + p.slice(1);
+      }
+
+      async function loadSettings() {
+        if (!requireAuth()) return;
+        try {
+          const user = await requestJSON('/api/user', { headers: authHeaders() });
+          byId('user-email').textContent = user.email;
+          byId('plan-name').textContent = planLabel(user.plan);
+        } catch (err) {
+          showError('settings-error', err.message || 'Failed to load settings');
+        }
+      }
+
+      byId('password-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearError('password-error');
+        byId('password-success').classList.add('hidden');
+
+        const currentPassword = byId('current-password').value;
+        const newPassword = byId('new-password').value;
+        const confirm = byId('confirm-password').value;
+
+        if (newPassword !== confirm) {
+          showError('password-error', 'New passwords do not match');
+          return;
+        }
+
+        const btn = byId('password-btn');
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+
+        try {
+          await requestJSON('/api/user/password', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+          });
+          byId('password-success').classList.remove('hidden');
+          byId('password-form').reset();
+        } catch (err) {
+          showError('password-error', err.message || 'Password update failed');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+
+      byId('billing-btn').addEventListener('click', async () => {
+        try {
+          const data = await requestJSON('/api/billing/portal', {
+            method: 'POST',
+            headers: authHeaders(),
+          });
+          window.location.href = data.portal_url;
+        } catch (err) {
+          showError('settings-error', err.message || 'Unable to open billing portal');
+        }
+      });
+
+      byId('logout-btn').addEventListener('click', logout);
+      loadSettings();
+    </script>
+  </body>
+</html>

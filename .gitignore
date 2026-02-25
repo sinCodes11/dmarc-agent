@@ -26,6 +26,8 @@ secrets/
 reports/
 reports/*.html
 *.pdf
+.pgdata/
+.pglog
 
 # Allow frontend HTML files
 !frontend/*.html

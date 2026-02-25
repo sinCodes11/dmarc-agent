@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);} 
+      gtag('js', new Date());
+      gtag('config', 'G-K03JBNND58');
+    </script>
+    <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentryDMARC | Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-md mx-auto px-6 py-20">
+      <section class="panel rounded-2xl p-8">
+        <h1 class="text-3xl font-semibold">Log in</h1>
+        <p class="text-slate-300 mt-2 text-sm">Access your monitoring dashboard.</p>
+
+        <form id="login-form" class="mt-6 space-y-4">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-slate-300">Email</span>
+            <input id="email" type="email" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-slate-300">Password</span>
+            <input id="password" type="password" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
+          </label>
+          <button id="login-btn" type="submit" class="w-full glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Log in</button>
+        </form>
+
+        <p id="login-error" class="hidden mt-3 text-red-400 text-sm"></p>
+        <div class="mt-5 flex items-center justify-between text-sm">
+          <a href="/forgot-password" class="text-blue-300 hover:text-blue-200">Forgot password?</a>
+          <a href="/signup" class="text-blue-300 hover:text-blue-200">Create account</a>
+        </div>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+    <script src="/assets/auth.js"></script>
+    <script>
+      if (getToken()) window.location.href = '/dashboard';
+
+      byId('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearError('login-error');
+
+        const email = byId('email').value.trim().toLowerCase();
+        const password = byId('password').value;
+        const btn = byId('login-btn');
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Logging in...';
+
+        try {
+          const data = await requestJSON('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          });
+          localStorage.setItem('sentrydmarc_email', email);
+          setToken(data.token);
+          window.location.href = '/dashboard';
+        } catch (err) {
+          showError('login-error', err.message || 'Login failed');
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);} 
+      gtag('js', new Date());
+      gtag('config', 'G-K03JBNND58');
+    </script>
+    <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentryDMARC | Domain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body class="text-slate-100">
+    <main class="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-6">
+      <div class="flex items-center justify-between gap-3">
+        <a href="/dashboard" class="text-blue-300 hover:text-blue-200 text-sm">&larr; Dashboard</a>
+        <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
+      </div>
+
+      <header class="panel rounded-2xl p-6 md:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 id="domain-name" class="text-3xl md:text-4xl font-semibold">Domain</h1>
+            <p class="text-slate-300 text-sm mt-2">Last scanned: <span id="last-scanned">Never</span></p>
+          </div>
+          <span id="risk-badge" class="px-4 py-2 rounded-xl text-sm font-semibold">UNKNOWN</span>
+        </div>
+      </header>
+
+      <p id="domain-error" class="hidden text-red-400 text-sm"></p>
+
+      <section>
+        <h2 class="text-2xl font-semibold mb-3">Authentication Status</h2>
+        <div id="status-grid" class="grid md:grid-cols-3 gap-4"></div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-semibold mb-3">Detected Issues</h2>
+        <ol id="issues-list" class="space-y-3"></ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-semibold mb-3">Recommended DNS Records</h2>
+        <div id="records-wrap" class="space-y-3"></div>
+      </section>
+
+      <section class="panel rounded-2xl p-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="rescan-btn" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Re-scan Now</button>
+          <button id="delete-btn" class="rounded-xl border border-red-500/50 hover:border-red-400 text-red-300 hover:text-red-200 font-semibold px-6 py-3">Remove Domain</button>
+        </div>
+      </section>
+
+      <section class="panel rounded-2xl p-6">
+        <h2 class="text-2xl font-semibold mb-3">Scan History</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-slate-300 border-b border-slate-700">
+                <th class="text-left py-2 pr-4">Date</th>
+                <th class="text-left py-2 pr-4">Risk</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+    <script src="/assets/auth.js"></script>
+    <script>
+      const domainId = qs('id');
+
+      function severityClasses(sev) {
+        const s = String(sev || 'INFO').toUpperCase();
+        if (s === 'CRITICAL' || s === 'HIGH') return 'text-red-300 border-red-500/40 bg-red-900/40';
+        if (s === 'MEDIUM') return 'text-amber-300 border-amber-500/40 bg-amber-900/30';
+        if (s === 'LOW') return 'text-green-300 border-green-500/40 bg-green-900/30';
+        return 'text-slate-300 border-slate-500/40 bg-slate-800/40';
+      }
+
+      function bindCopyButtons() {
+        document.querySelectorAll('.copy-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const target = byId(btn.getAttribute('data-copy'));
+            if (!target) return;
+            await navigator.clipboard.writeText(target.innerText);
+            btn.textContent = 'Copied';
+            setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+          });
+        });
+      }
+
+      async function loadDomain() {
+        if (!requireAuth()) return;
+        if (!domainId) {
+          showError('domain-error', 'Missing domain id');
+          return;
+        }
+
+        try {
+          const [domainData, scans] = await Promise.all([
+            requestJSON(`/api/user/domains/${encodeURIComponent(domainId)}`, { headers: authHeaders() }),
+            requestJSON(`/api/user/domains/${encodeURIComponent(domainId)}/scans`, { headers: authHeaders() }),
+          ]);
+
+          byId('domain-name').textContent = domainData.domain;
+          byId('last-scanned').textContent = fmtDate(domainData.last_scanned_at);
+
+          const risk = String(domainData.current_risk_level || 'UNKNOWN').toUpperCase();
+          const badge = byId('risk-badge');
+          badge.className = `px-4 py-2 rounded-xl text-sm font-semibold ${riskBadgeClass(risk)}`;
+          badge.textContent = `${risk} RISK`;
+
+          const result = domainData.latest_scan_result || {};
+
+          const statusWrap = byId('status-grid');
+          statusWrap.innerHTML = '';
+          const securityStatus = result.security_status || {};
+          ['spf', 'dkim', 'dmarc'].forEach((key) => {
+            if (securityStatus[key] !== undefined) renderStatusCard(statusWrap, key, securityStatus[key]);
+          });
+
+          const issues = asIssues(result);
+          byId('issues-list').innerHTML = issues.length
+            ? issues.map((issue, idx) => `<li class="panel rounded-xl p-4 border ${severityClasses(issue.severity)}">
+                <p class="text-sm uppercase tracking-wider mb-1">${idx + 1}. ${issue.severity}</p>
+                <p class="font-semibold text-white">${issue.title}</p>
+                <p class="text-slate-200 text-sm mt-1">${issue.description}</p>
+                ${issue.remediation ? `<p class="text-slate-300 text-xs mt-2 italic">${issue.remediation}</p>` : ''}
+              </li>`).join('')
+            : '<li class="text-slate-300">No issues detected.</li>';
+
+          const records = asRecords(result);
+          byId('records-wrap').innerHTML = records.length
+            ? records.map((rec, idx) => `<div class="panel rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                  <p class="text-sm uppercase tracking-wider text-slate-300">${rec.label} - Type: ${rec.type} - Name: <code>${rec.name}</code></p>
+                  <button class="copy-btn text-xs bg-blue-500 hover:bg-blue-400 text-white px-3 py-1 rounded-md" data-copy="record-${idx}">Copy</button>
+                </div>
+                <code id="record-${idx}" class="block whitespace-pre-wrap break-all text-sm text-slate-100">${rec.value}</code>
+              </div>`).join('')
+            : '<p class="text-slate-300">No record changes needed.</p>';
+
+          bindCopyButtons();
+
+          byId('history-body').innerHTML = scans.length
+            ? scans.map((scan) => `<tr class="border-b border-slate-800">
+                <td class="py-2 pr-4 text-slate-200">${fmtDate(scan.created_at)}</td>
+                <td class="py-2 pr-4"><span class="px-2 py-1 rounded text-xs font-semibold ${riskBadgeClass(scan.risk_level)}">${scan.risk_level}</span></td>
+              </tr>`).join('')
+            : '<tr><td colspan="2" class="py-2 text-slate-300">No scans yet.</td></tr>';
+        } catch (err) {
+          showError('domain-error', err.message || 'Failed to load domain');
+        }
+      }
+
+      byId('rescan-btn').addEventListener('click', async () => {
+        if (!domainId) return;
+        const btn = byId('rescan-btn');
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Scanning...';
+        try {
+          await requestJSON(`/api/user/domains/${encodeURIComponent(domainId)}/scan`, {
+            method: 'POST',
+            headers: authHeaders(),
+          });
+          await loadDomain();
+        } catch (err) {
+          showError('domain-error', err.message || 'Scan failed');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+
+      byId('delete-btn').addEventListener('click', async () => {
+        if (!domainId) return;
+        if (!window.confirm('Remove this domain and all scan history?')) return;
+        try {
+          await requestJSON(`/api/user/domains/${encodeURIComponent(domainId)}`, {
+            method: 'DELETE',
+            headers: authHeaders(),
+          });
+          window.location.href = '/dashboard';
+        } catch (err) {
+          showError('domain-error', err.message || 'Could not remove domain');
+        }
+      });
+
+      byId('logout-btn').addEventListener('click', logout);
+      loadDomain();
+    </script>
+  </body>
+</html>
