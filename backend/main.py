@@ -234,7 +234,8 @@ async def login_page():
 
 @app.get("/signup")
 async def signup_page():
-    return FileResponse(str(frontend_path / "signup.html"))
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/pricing", status_code=302)
 
 
 @app.get("/forgot-password")

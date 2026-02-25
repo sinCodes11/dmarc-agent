@@ -46,18 +46,8 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/signup")
-async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)) -> dict:
-    existing = await db.execute(select(User).where(User.email == payload.email.lower()))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    token = create_access_token(str(user.id))
-    return {"token": token, "user": {"id": str(user.id), "email": user.email}}
+async def signup() -> dict:
+    raise HTTPException(status_code=403, detail="Account creation is by invitation only. Please purchase a plan at sentrydmarc.com/pricing.")
 
 
 @router.post("/login")
