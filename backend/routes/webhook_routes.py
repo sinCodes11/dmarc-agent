@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import random
 import string
@@ -88,7 +89,7 @@ async def _auto_add_domain_and_scan(db: AsyncSession, user: User, domain_name: s
         db.add(domain_row)
         await db.flush()
 
-    result = run_scan(cleaned)
+    result = await asyncio.to_thread(run_scan, cleaned)
     risk_level = str(result.get("risk_level", "UNKNOWN")).upper()
 
     db.add(Scan(domain_id=domain_row.id, result=result))

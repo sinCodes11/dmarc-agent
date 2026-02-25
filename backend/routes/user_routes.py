@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import uuid
@@ -129,7 +130,7 @@ async def add_domain(
     db.add(domain_row)
     await db.flush()
 
-    scan_result = run_scan(domain_name)
+    scan_result = await asyncio.to_thread(run_scan, domain_name)
     risk_level = _extract_risk_level(scan_result)
 
     scan_row = Scan(domain_id=domain_row.id, result=scan_result)
@@ -214,7 +215,7 @@ async def run_domain_scan(
 ) -> dict:
     domain = await _get_domain_for_user(db, current_user.id, domain_id)
 
-    result = run_scan(domain.domain)
+    result = await asyncio.to_thread(run_scan, domain.domain)
     risk_level = _extract_risk_level(result)
 
     scan = Scan(domain_id=domain.id, result=result)
