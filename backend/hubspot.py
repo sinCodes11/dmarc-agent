@@ -35,23 +35,24 @@ def _http(method: str, path: str, body: dict | None = None) -> dict:
         raise RuntimeError(f"HubSpot {exc.code}: {detail}") from exc
 
 
-def _scan_completed_stage_id() -> str:
-    if "stage_id" in _stage_cache:
-        return _stage_cache["stage_id"]
+def _scan_completed_stage_id() -> tuple[str, str]:
+    if "stage_id" in _stage_cache and "pipeline_id" in _stage_cache:
+        return _stage_cache["stage_id"], _stage_cache["pipeline_id"]
     resp = _http("GET", "/crm/v3/pipelines/deals")
     for pipeline in resp.get("results", []):
         for stage in pipeline.get("stages", []):
             if "scan completed" in stage.get("label", "").lower():
                 _stage_cache["stage_id"] = stage["id"]
-                return stage["id"]
+                _stage_cache["pipeline_id"] = pipeline["id"]
+                return stage["id"], pipeline["id"]
     # fallback: first stage of first pipeline
     for pipeline in resp.get("results", []):
         stages = pipeline.get("stages", [])
         if stages:
-            sid = stages[0]["id"]
-            _stage_cache["stage_id"] = sid
-            return sid
-    return ""
+            _stage_cache["stage_id"] = stages[0]["id"]
+            _stage_cache["pipeline_id"] = pipeline["id"]
+            return stages[0]["id"], pipeline["id"]
+    return "", ""
 
 
 def _upsert_contact(email: str, company: str, domain: str, scan_result: dict) -> str:
@@ -91,11 +92,11 @@ def _upsert_contact(email: str, company: str, domain: str, scan_result: dict) ->
     return resp["id"]
 
 
-def _create_deal(domain: str, stage_id: str) -> str:
+def _create_deal(domain: str, stage_id: str, pipeline_id: str) -> str:
     resp = _http("POST", "/crm/v3/objects/deals", {"properties": {
         "dealname": f"DMARC Scan — {domain}",
         "dealstage": stage_id,
-        "pipeline": "default",
+        "pipeline": pipeline_id,
     }})
     return resp["id"]
 
@@ -112,9 +113,9 @@ def push_lead(email: str, company: str, domain: str, scan_result: dict) -> None:
     if not os.getenv("HUBSPOT_API_KEY"):
         return
     try:
-        stage_id = _scan_completed_stage_id()
+        stage_id, pipeline_id = _scan_completed_stage_id()
         contact_id = _upsert_contact(email, company, domain, scan_result)
-        deal_id = _create_deal(domain, stage_id)
+        deal_id = _create_deal(domain, stage_id, pipeline_id)
         _associate_deal_contact(deal_id, contact_id)
     except Exception as exc:
         print(f"[HubSpot] push_lead failed: {exc}")
