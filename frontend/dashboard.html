@@ -4,7 +4,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);} 
+      function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-K03JBNND58');
     </script>
@@ -15,39 +15,57 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main class="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-7">
-      <header class="panel rounded-2xl p-6 md:p-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 class="text-3xl md:text-4xl font-semibold">SentryDMARC</h1>
-          <p class="text-slate-300 text-sm mt-2">Monitor and improve domain email security posture.</p>
+  <body>
+
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/dashboard" class="s-logo">SentryDMARC</a>
+        <div class="flex items-center gap-4">
+          <span id="plan-badge" class="plan-badge">Starter</span>
+          <a href="/settings" class="s-nav__link hide-mobile">Settings</a>
+          <button id="logout-btn" class="s-nav__link">Logout</button>
         </div>
-        <div class="flex items-center gap-3">
-          <span id="plan-badge" class="px-4 py-2 rounded-xl border border-blue-500/40 text-blue-200 text-sm">Starter Plan</span>
-          <a href="/settings" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Settings</a>
-          <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
-        </div>
+      </div>
+    </nav>
+
+    <main class="nav-offset max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-6">
+
+      <header>
+        <p class="s-tag">Dashboard</p>
+        <h1 class="text-3xl md:text-4xl font-semibold" style="font-family:var(--font-mono)">Domain Monitor</h1>
+        <p class="mt-2 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+          Monitor and improve email security posture across your domains.
+        </p>
       </header>
 
-      <p id="dashboard-error" class="hidden text-red-400 text-sm"></p>
+      <p id="dashboard-error" class="hidden text-xs" style="color:#fca5a5;font-family:var(--font-mono)"></p>
 
-      <section class="panel rounded-2xl p-6 md:p-7">
+      <!-- Domains -->
+      <section class="panel rounded-lg p-6 md:p-7">
         <div class="flex items-center justify-between gap-3 flex-wrap">
-          <h2 class="text-2xl font-semibold">Your Domains</h2>
-          <span id="domain-limit" class="text-sm text-slate-300">0 of 1 domains</span>
+          <h2 class="text-xl font-semibold" style="font-family:var(--font-mono)">Your Domains</h2>
+          <span id="domain-limit" class="text-xs" style="color:var(--text-muted);font-family:var(--font-mono)">
+            0 of 1 domains
+          </span>
         </div>
-        <p id="empty-state" class="hidden text-slate-300 text-sm mt-3">No domains yet - add your first domain below.</p>
+        <p id="empty-state" class="hidden text-sm mt-3" style="color:var(--text-secondary);font-family:var(--font-sans)">
+          No domains yet — add your first domain below.
+        </p>
         <div id="domains-wrap" class="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </section>
 
-      <section class="panel rounded-2xl p-6 md:p-7">
-        <h2 class="text-xl font-semibold">Add Domain</h2>
-        <form id="add-domain-form" class="mt-4 flex flex-col md:flex-row gap-3">
-          <input id="domain-input" type="text" placeholder="example.com" class="flex-1 rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
-          <button id="add-domain-btn" type="submit" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Add Domain</button>
+      <!-- Add Domain -->
+      <section class="panel rounded-lg p-6 md:p-7">
+        <p class="s-tag">Add Domain</p>
+        <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">Monitor a new domain</h2>
+        <form id="add-domain-form" class="mt-5 flex flex-col md:flex-row gap-3">
+          <input id="domain-input" type="text" placeholder="example.com"
+                 class="s-input flex-1" style="border-radius:4px" />
+          <button id="add-domain-btn" type="submit" class="s-btn">Add Domain</button>
         </form>
-        <p id="add-domain-error" class="hidden mt-3 text-red-400 text-sm"></p>
+        <p id="add-domain-error" class="hidden mt-3 text-xs" style="color:#fca5a5;font-family:var(--font-mono)"></p>
       </section>
+
     </main>
 
     <script src="/assets/app.js"></script>

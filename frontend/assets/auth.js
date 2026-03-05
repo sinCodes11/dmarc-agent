@@ -20,7 +20,7 @@ function logout() {
 function riskBadgeClass(riskLevel) {
   const level = String(riskLevel || "UNKNOWN").toUpperCase();
   if (["LOW", "MEDIUM", "HIGH"].includes(level)) return `risk-${level}`;
-  return "border border-slate-600 bg-slate-800 text-slate-200";
+  return "risk-UNKNOWN";
 }
 
 function fmtDate(iso) {
@@ -84,13 +84,13 @@ function renderStatusCard(target, key, value) {
 
   target.insertAdjacentHTML(
     "beforeend",
-    `<div class="panel rounded-xl p-5">
+    `<div class="panel rounded-lg p-5">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold text-white">${key.toUpperCase()}</h3>
-        <span class="text-xs uppercase tracking-widest text-slate-300">${checkedLabel}</span>
+        <h3 class="text-base font-semibold" style="font-family:var(--font-mono)">${key.toUpperCase()}</h3>
+        <span class="text-xs uppercase tracking-widest" style="color:var(--text-muted);font-family:var(--font-mono)">${checkedLabel}</span>
       </div>
-      <p class="text-sm text-slate-200">Status: <span class="font-semibold">${statusText}</span></p>
-      <p class="text-sm text-slate-200 mt-1">Presence: <span class="font-semibold">${presenceText}</span></p>
+      <p class="text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">Status: <span class="font-semibold" style="color:var(--text-primary)">${statusText}</span></p>
+      <p class="text-sm mt-1" style="font-family:var(--font-sans);color:var(--text-secondary)">Presence: <span class="font-semibold" style="color:var(--text-primary)">${presenceText}</span></p>
     </div>`
   );
 }

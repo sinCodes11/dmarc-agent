@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
+    <!-- Google tag -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -17,74 +17,117 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main class="max-w-6xl mx-auto px-6 py-10 md:py-16">
-      <section class="panel rounded-2xl p-8 md:p-12">
-        <p class="uppercase tracking-[0.22em] text-blue-300 text-xs md:text-sm">DMARC Risk Scanner</p>
-        <h1 class="mt-3 text-4xl md:text-6xl font-semibold leading-tight">Is Your Business Email Protected?</h1>
-        <p class="mt-5 text-lg text-slate-200 max-w-2xl">Check your domain's email security in 30 seconds - free.</p>
+  <body>
 
-        <form id="scan-form" class="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
-          <input
-            id="domain-input"
-            type="text"
-            placeholder="example.com"
-            class="w-full rounded-xl px-5 py-4 bg-slate-900/90 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-            required
-          />
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/" class="s-logo">SentryDMARC</a>
+        <ul class="s-nav__links">
+          <li><a href="/pricing" class="s-nav__link">Pricing</a></li>
+          <li><a href="/login" class="s-nav__link hide-mobile">Login</a></li>
+          <li><a href="/signup" class="s-btn s-btn--sm">Get Started</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="nav-offset max-w-5xl mx-auto px-6 py-14 md:py-20">
+
+      <!-- Hero -->
+      <section class="panel rounded-lg p-8 md:p-14">
+        <p class="s-tag">DMARC Risk Scanner</p>
+        <h1 class="text-4xl md:text-6xl font-semibold leading-tight tracking-tight"
+            style="font-family:var(--font-mono)">
+          Is Your Business<br class="hidden md:block" /> Email Protected?
+        </h1>
+        <p class="mt-5 max-w-xl" style="font-family:var(--font-sans);color:var(--text-secondary);font-size:16px;">
+          Check your domain's SPF, DKIM, and DMARC configuration in 30 seconds — free, no account required.
+        </p>
+
+        <form id="scan-form" class="mt-10 flex flex-col md:flex-row gap-3">
+          <div class="flex-1 flex items-center gap-2" style="border:1px solid var(--border);border-radius:4px;background:#0d0d0d;padding:0 16px;transition:var(--transition);" onfocus-within="this.style.borderColor='var(--accent)'">
+            <span style="color:var(--accent);font-family:var(--font-mono);font-size:13px;opacity:0.6;white-space:nowrap">$  check</span>
+            <input
+              id="domain-input"
+              type="text"
+              placeholder="example.com"
+              style="background:transparent;border:none;outline:none;color:var(--text-primary);font-family:var(--font-mono);font-size:15px;padding:14px 8px;width:100%;"
+              required
+            />
+          </div>
           <button
             id="scan-button"
             type="submit"
-            class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-8 py-4 text-lg transition-colors"
-          >
-            Check My Domain
-          </button>
+            class="s-btn s-btn--lg"
+          >Scan Domain →</button>
         </form>
 
-        <div id="loading-row" class="hidden mt-4 flex items-center gap-3 text-blue-200">
-          <span class="pulse inline-block w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-          <span>Scanning domain...</span>
+        <div id="loading-row" class="hidden mt-5 flex items-center gap-3" style="color:var(--accent)">
+          <span class="pulse inline-block w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+          <span style="font-size:13px">Scanning DNS records...</span>
         </div>
-        <p id="scan-error" class="hidden mt-3 text-red-300 text-sm"></p>
+        <p id="scan-error" class="hidden mt-3 text-sm" style="color:#fca5a5"></p>
       </section>
 
-      <section class="mt-10 grid md:grid-cols-3 gap-4">
-        <div class="panel rounded-xl p-5">
-          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 1</p>
-          <h2 class="text-xl font-semibold mt-2">Enter domain</h2>
-          <p class="text-slate-300 mt-2 text-sm">Type your root domain and start a live DNS security check.</p>
+      <!-- How it works -->
+      <section class="mt-8 grid md:grid-cols-3 gap-4">
+        <div class="panel rounded-lg p-6">
+          <p class="s-tag">Step 01</p>
+          <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">Enter your domain</h2>
+          <p class="mt-2 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Type your root domain and trigger a live DNS security scan.
+          </p>
         </div>
-        <div class="panel rounded-xl p-5">
-          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 2</p>
-          <h2 class="text-xl font-semibold mt-2">See your risk score</h2>
-          <p class="text-slate-300 mt-2 text-sm">Instantly view SPF, DKIM, and DMARC posture by severity.</p>
+        <div class="panel rounded-lg p-6">
+          <p class="s-tag">Step 02</p>
+          <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">See your risk score</h2>
+          <p class="mt-2 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Instantly view SPF, DKIM, and DMARC posture ranked by severity.
+          </p>
         </div>
-        <div class="panel rounded-xl p-5">
-          <p class="text-blue-300 text-sm uppercase tracking-wider">Step 3</p>
-          <h2 class="text-xl font-semibold mt-2">Get your free report</h2>
-          <p class="text-slate-300 mt-2 text-sm">Email a shareable remediation report to your team.</p>
-        </div>
-      </section>
-
-      <section class="mt-10 panel rounded-2xl p-6 md:p-8">
-        <h2 class="text-2xl md:text-3xl font-semibold">Why teams are fixing this now</h2>
-        <div class="mt-6 grid md:grid-cols-3 gap-4">
-          <div class="rounded-xl bg-red-950/40 border border-red-500/30 p-5">
-            <p class="text-3xl font-semibold text-red-200">$2.9B</p>
-            <p class="text-sm text-red-100/90 mt-2">FBI reported Business Email Compromise losses in 2023.</p>
-          </div>
-          <div class="rounded-xl bg-amber-950/40 border border-amber-500/30 p-5">
-            <p class="text-3xl font-semibold text-amber-200">43%</p>
-            <p class="text-sm text-amber-100/90 mt-2">of observed attacks target SMB organizations.</p>
-          </div>
-          <div class="rounded-xl bg-blue-950/40 border border-blue-500/30 p-5">
-            <p class="text-3xl font-semibold text-blue-200">2024</p>
-            <p class="text-sm text-blue-100/90 mt-2">Google and Yahoo sender requirements elevated DMARC enforcement.</p>
-          </div>
+        <div class="panel rounded-lg p-6">
+          <p class="s-tag">Step 03</p>
+          <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">Get your free report</h2>
+          <p class="mt-2 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Email a shareable remediation report to your team.
+          </p>
         </div>
       </section>
 
-      <footer class="mt-10 text-center text-xs text-slate-400">SentryDMARC — Fast domain posture checks for security teams.</footer>
+      <!-- Stats -->
+      <section class="mt-8 panel rounded-lg p-8">
+        <p class="s-tag">Threat Landscape</p>
+        <h2 class="text-2xl md:text-3xl font-semibold" style="font-family:var(--font-mono)">
+          Why teams are fixing this now
+        </h2>
+        <div class="mt-8 grid md:grid-cols-3 gap-4">
+          <div class="rounded-lg p-6" style="background:rgba(127,29,29,0.2);border:1px solid rgba(248,113,113,0.2)">
+            <p class="text-3xl font-bold" style="color:#fecaca;font-family:var(--font-mono)">$2.9B</p>
+            <p class="text-sm mt-2" style="font-family:var(--font-sans);color:rgba(254,202,202,0.8)">
+              FBI-reported Business Email Compromise losses in 2023.
+            </p>
+          </div>
+          <div class="rounded-lg p-6" style="background:rgba(120,53,15,0.2);border:1px solid rgba(251,191,36,0.2)">
+            <p class="text-3xl font-bold" style="color:#fde68a;font-family:var(--font-mono)">43%</p>
+            <p class="text-sm mt-2" style="font-family:var(--font-sans);color:rgba(253,230,138,0.8)">
+              of observed attacks target small and mid-size organizations.
+            </p>
+          </div>
+          <div class="rounded-lg p-6" style="background:rgba(255,0,51,0.05);border:1px solid var(--border-accent)">
+            <p class="text-3xl font-bold" style="color:var(--accent);font-family:var(--font-mono)">2024</p>
+            <p class="text-sm mt-2" style="font-family:var(--font-sans);color:var(--text-secondary)">
+              Google &amp; Yahoo now require DMARC for bulk senders.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-14 flex flex-col md:flex-row items-center justify-between gap-4 text-xs" style="color:var(--text-muted);border-top:1px solid var(--border);padding-top:32px">
+        <span style="font-family:var(--font-mono)">SentryDMARC — Email security posture monitoring</span>
+        <div class="flex gap-6" style="font-family:var(--font-mono)">
+          <a href="/pricing" style="color:var(--text-muted);text-decoration:none;transition:var(--transition)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Pricing</a>
+          <a href="mailto:support@sentrydmarc.com" style="color:var(--text-muted);text-decoration:none;transition:var(--transition)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Support</a>
+        </div>
+      </footer>
     </main>
 
     <script src="/assets/app.js"></script>

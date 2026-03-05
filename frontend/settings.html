@@ -4,7 +4,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);} 
+      function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-K03JBNND58');
     </script>
@@ -15,51 +15,73 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main class="max-w-3xl mx-auto px-6 py-10 md:py-14 space-y-6">
-      <div class="flex items-center justify-between gap-3">
-        <a href="/dashboard" class="text-blue-300 hover:text-blue-200 text-sm">&larr; Dashboard</a>
-        <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
+  <body>
+
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/dashboard" class="s-logo">SentryDMARC</a>
+        <div class="flex items-center gap-4">
+          <a href="/dashboard" class="s-nav__link hide-mobile">Dashboard</a>
+          <button id="logout-btn" class="s-nav__link">Logout</button>
+        </div>
       </div>
+    </nav>
 
-      <section class="panel rounded-2xl p-6">
-        <h1 class="text-3xl font-semibold">Settings</h1>
-        <p class="text-slate-300 mt-2 text-sm">Manage account security and billing.</p>
+    <main class="nav-offset max-w-3xl mx-auto px-6 py-10 md:py-14 space-y-6">
+
+      <header>
+        <p class="s-tag">Account</p>
+        <h1 class="text-3xl font-semibold mt-1" style="font-family:var(--font-mono)">Settings</h1>
+        <p class="mt-1 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+          Manage account security and billing.
+        </p>
+      </header>
+
+      <p id="settings-error" class="hidden text-xs" style="color:#fca5a5;font-family:var(--font-mono)"></p>
+
+      <!-- Account Info -->
+      <section class="panel rounded-lg p-6">
+        <p class="s-tag">Account Info</p>
+        <p class="text-sm mt-2" style="font-family:var(--font-mono);color:var(--text-secondary)">
+          Email: <span id="user-email" style="color:var(--text-primary)">—</span>
+        </p>
       </section>
 
-      <p id="settings-error" class="hidden text-red-400 text-sm"></p>
-
-      <section class="panel rounded-2xl p-6 space-y-3">
-        <h2 class="text-xl font-semibold">Account</h2>
-        <p class="text-sm text-slate-300">Email: <span id="user-email" class="text-slate-100">-</span></p>
-      </section>
-
-      <section class="panel rounded-2xl p-6">
-        <h2 class="text-xl font-semibold">Change Password</h2>
-        <form id="password-form" class="mt-4 space-y-4">
-          <label class="block">
-            <span class="text-xs uppercase tracking-wider text-slate-300">Current Password</span>
-            <input id="current-password" type="password" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
-          </label>
-          <label class="block">
-            <span class="text-xs uppercase tracking-wider text-slate-300">New Password</span>
-            <input id="new-password" type="password" minlength="8" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
-          </label>
-          <label class="block">
-            <span class="text-xs uppercase tracking-wider text-slate-300">Confirm New Password</span>
-            <input id="confirm-password" type="password" minlength="8" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-700 focus:border-blue-500 outline-none" />
-          </label>
-          <button id="password-btn" type="submit" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Update Password</button>
+      <!-- Change Password -->
+      <section class="panel rounded-lg p-6">
+        <p class="s-tag">Security</p>
+        <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">Change Password</h2>
+        <form id="password-form" class="mt-5 space-y-5">
+          <div>
+            <label class="s-label">Current Password</label>
+            <input id="current-password" type="password" required class="s-input" placeholder="••••••••" />
+          </div>
+          <div>
+            <label class="s-label">New Password</label>
+            <input id="new-password" type="password" minlength="8" required class="s-input" placeholder="••••••••" />
+          </div>
+          <div>
+            <label class="s-label">Confirm New Password</label>
+            <input id="confirm-password" type="password" minlength="8" required class="s-input" placeholder="••••••••" />
+          </div>
+          <button id="password-btn" type="submit" class="s-btn">Update Password</button>
         </form>
-        <p id="password-success" class="hidden mt-3 text-green-400 text-sm">Password updated.</p>
-        <p id="password-error" class="hidden mt-3 text-red-400 text-sm"></p>
+        <p id="password-success" class="hidden mt-3 text-xs" style="color:#bbf7d0;font-family:var(--font-mono)">
+          Password updated.
+        </p>
+        <p id="password-error" class="hidden mt-3 text-xs" style="color:#fca5a5;font-family:var(--font-mono)"></p>
       </section>
 
-      <section class="panel rounded-2xl p-6">
-        <h2 class="text-xl font-semibold">Plan & Billing</h2>
-        <p class="text-sm text-slate-300 mt-2">Current plan: <span id="plan-name" class="text-slate-100">Starter</span></p>
-        <button id="billing-btn" class="mt-4 rounded-xl border border-blue-500/50 hover:border-blue-400 text-blue-300 hover:text-white font-semibold px-6 py-3 text-sm">Manage Billing</button>
+      <!-- Billing -->
+      <section class="panel rounded-lg p-6">
+        <p class="s-tag">Billing</p>
+        <h2 class="text-lg font-semibold mt-1" style="font-family:var(--font-mono)">Plan &amp; Billing</h2>
+        <p class="text-sm mt-2" style="font-family:var(--font-mono);color:var(--text-secondary)">
+          Current plan: <span id="plan-name" style="color:var(--accent)">Starter</span>
+        </p>
+        <button id="billing-btn" class="s-btn s-btn--outline mt-5">Manage Billing</button>
       </section>
+
     </main>
 
     <script src="/assets/app.js"></script>

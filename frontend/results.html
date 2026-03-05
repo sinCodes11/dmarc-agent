@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -9,7 +8,6 @@
       gtag('js', new Date());
       gtag('config', 'G-K03JBNND58');
     </script>
-    <!-- Hotjar -->
     <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,71 +15,113 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main id="results-root" class="max-w-6xl mx-auto px-6 py-10 md:py-14">
-      <div id="results-loading" class="panel rounded-2xl p-8">
-        <p class="text-blue-200 pulse">Loading scan results...</p>
+  <body>
+
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/" class="s-logo">SentryDMARC</a>
+        <ul class="s-nav__links">
+          <li><a href="/pricing" class="s-nav__link">Pricing</a></li>
+          <li><a href="/login" class="s-nav__link hide-mobile">Login</a></li>
+          <li><a href="/signup" class="s-btn s-btn--sm">Get Started</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main id="results-root" class="nav-offset max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-6">
+
+      <div id="results-loading" class="panel rounded-lg p-8">
+        <div class="flex items-center gap-3" style="color:var(--accent)">
+          <span class="pulse inline-block w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+          <span style="font-size:13px">Loading scan results...</span>
+        </div>
       </div>
 
-      <p id="results-error" class="hidden mt-4 text-red-300"></p>
+      <p id="results-error" class="hidden mt-4 text-sm" style="color:#fca5a5;font-family:var(--font-mono)"></p>
 
-      <section id="results-content" class="hidden space-y-8">
-        <header class="panel rounded-2xl p-7 md:p-10">
-          <div class="flex flex-wrap items-center justify-between gap-4">
+      <section id="results-content" class="hidden space-y-6">
+
+        <!-- Header -->
+        <header class="panel rounded-lg p-7 md:p-10">
+          <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p class="uppercase tracking-widest text-xs text-blue-300">Scan Result</p>
-              <h1 class="mt-2 text-3xl md:text-5xl font-semibold" id="domain-name">-</h1>
-              <p class="mt-2 text-slate-300 text-sm">Scan ID: <span id="scan-id"></span></p>
+              <p class="s-tag">Scan Result</p>
+              <h1 class="text-3xl md:text-5xl font-semibold mt-1" id="domain-name"
+                  style="font-family:var(--font-mono)">—</h1>
+              <p class="mt-2 text-xs" style="color:var(--text-muted);font-family:var(--font-mono)">
+                Scan ID: <span id="scan-id"></span>
+              </p>
             </div>
-            <span id="risk-badge" class="px-6 py-3 rounded-xl text-lg font-semibold">UNKNOWN RISK</span>
+            <span id="risk-badge" class="px-5 py-2 rounded text-sm font-semibold risk-UNKNOWN"
+                  style="font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">
+              UNKNOWN RISK
+            </span>
           </div>
         </header>
 
+        <!-- Auth Status -->
         <section>
-          <h2 class="text-2xl font-semibold mb-3">Authentication Status</h2>
+          <p class="s-tag mb-3">Authentication Status</p>
           <div id="status-grid" class="grid md:grid-cols-3 gap-4"></div>
         </section>
 
+        <!-- Issues -->
         <section>
-          <h2 class="text-2xl font-semibold mb-3">Detected Issues</h2>
+          <p class="s-tag mb-3">Detected Issues</p>
           <ol id="issues-list" class="space-y-3"></ol>
         </section>
 
+        <!-- Records -->
         <section>
-          <h2 class="text-2xl font-semibold mb-3">Recommended DNS Records</h2>
+          <p class="s-tag mb-3">Recommended DNS Records</p>
           <div id="records-wrap" class="space-y-3"></div>
         </section>
 
-        <section id="business-impact-section" class="hidden panel rounded-2xl p-7">
-          <h2 class="text-2xl font-semibold mb-3">What This Means for Your Business</h2>
-          <p id="business-impact-text" class="text-slate-200 leading-relaxed whitespace-pre-line"></p>
+        <!-- Business Impact -->
+        <section id="business-impact-section" class="hidden panel rounded-lg p-7">
+          <p class="s-tag">Business Impact</p>
+          <p id="business-impact-text" class="mt-2 leading-relaxed whitespace-pre-line"
+             style="font-family:var(--font-sans);color:var(--text-secondary);font-size:15px"></p>
         </section>
 
-        <section class="panel rounded-2xl p-7">
-          <h2 class="text-2xl font-semibold">Get your full PDF report</h2>
-          <p class="text-slate-300 mt-2 text-sm">Enter your details and we will email the full report.</p>
+        <!-- Email Report -->
+        <section class="panel rounded-lg p-7">
+          <p class="s-tag">Full Report</p>
+          <h2 class="text-xl font-semibold" style="font-family:var(--font-mono)">Get your PDF report</h2>
+          <p class="mt-1 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Enter your details and we'll email the complete remediation report.
+          </p>
 
-          <form id="report-form" class="mt-5 grid md:grid-cols-3 gap-3 items-end">
-            <label class="block md:col-span-1">
-              <span class="text-xs uppercase tracking-wider text-slate-300">Work Email</span>
-              <input id="report-email" type="email" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-600" />
-            </label>
-            <label class="block md:col-span-1">
-              <span class="text-xs uppercase tracking-wider text-slate-300">Company</span>
-              <input id="report-company" type="text" required class="mt-1 w-full rounded-xl px-4 py-3 bg-slate-900 border border-slate-600" />
-            </label>
-            <button type="submit" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Send Report</button>
+          <form id="report-form" class="mt-6 grid md:grid-cols-3 gap-3 items-end">
+            <div class="md:col-span-1">
+              <label class="s-label">Work Email</label>
+              <input id="report-email" type="email" required class="s-input" placeholder="you@company.com" />
+            </div>
+            <div class="md:col-span-1">
+              <label class="s-label">Company</label>
+              <input id="report-company" type="text" required class="s-input" placeholder="Acme Corp" />
+            </div>
+            <button type="submit" class="s-btn">Send Report</button>
           </form>
 
-          <p id="report-success" class="hidden mt-3 text-green-300 text-sm"></p>
-          <p id="report-error" class="hidden mt-3 text-red-300 text-sm"></p>
+          <p id="report-success" class="hidden mt-3 text-sm" style="color:#bbf7d0;font-family:var(--font-mono)"></p>
+          <p id="report-error" class="hidden mt-3 text-sm" style="color:#fca5a5;font-family:var(--font-mono)"></p>
         </section>
 
-        <section class="panel rounded-2xl p-6 text-center">
-          <p class="text-lg text-slate-100">Want this fixed for you? Setup takes 30 minutes.</p>
-          <p class="text-slate-300 text-sm mt-1">Managed DMARC enforcement, monitoring, and reporting — starting at $49/mo.</p>
-          <a href="/pricing" class="mt-4 inline-block glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-8 py-3 transition-colors">Get Protected — Plans from $49/mo</a>
+        <!-- CTA -->
+        <section class="panel rounded-lg p-8 text-center">
+          <p class="s-tag">Managed Protection</p>
+          <p class="text-lg font-semibold" style="font-family:var(--font-mono)">
+            Want this fixed for you? Setup takes 30 minutes.
+          </p>
+          <p class="mt-2 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Managed DMARC enforcement, monitoring, and reporting — starting at $49/mo.
+          </p>
+          <a href="/pricing" class="s-btn mt-6 inline-flex">
+            View Plans →
+          </a>
         </section>
+
       </section>
     </main>
 

@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -9,7 +8,6 @@
       gtag('js', new Date());
       gtag('config', 'G-K03JBNND58');
     </script>
-    <!-- Hotjar -->
     <script src="https://t.contentsquare.net/uxa/7b991b222f744.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,60 +15,77 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main class="max-w-2xl mx-auto px-6 py-20 text-center">
+  <body>
 
-      <div class="panel rounded-2xl p-10 md:p-14">
-        <div class="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center mx-auto mb-6">
-          <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-
-        <h1 class="text-3xl md:text-4xl font-semibold">You're protected.</h1>
-        <p class="mt-4 text-slate-300 text-lg">Your SentryDMARC subscription is active.</p>
-
-        <div class="mt-8 text-left space-y-4 text-sm text-slate-300">
-          <div class="flex items-start gap-3">
-            <span class="text-blue-400 font-bold mt-0.5">1</span>
-            <div>
-              <p class="font-semibold text-slate-100">Check your email</p>
-              <p>Your login credentials are on their way (usually within 30 seconds).</p>
-            </div>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="text-blue-400 font-bold mt-0.5">2</span>
-            <div>
-              <p class="font-semibold text-slate-100">Log in at sentrydmarc.com/login</p>
-              <p>Use the credentials from your welcome email to access your dashboard.</p>
-            </div>
-          </div>
-          <div class="flex items-start gap-3">
-            <span class="text-blue-400 font-bold mt-0.5">3</span>
-            <div>
-              <p class="font-semibold text-slate-100">Add your domain and deploy your DNS records</p>
-              <p>Our setup wizard generates the exact records to add to your DNS provider.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-          <a
-            href="/login"
-            class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-8 py-3 text-sm transition-colors"
-          >Go to Login →</a>
-          <a
-            href="/"
-            class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-semibold px-8 py-3 text-sm transition-colors"
-          >Scan Another Domain</a>
-          <a
-            href="mailto:support@sentrydmarc.com"
-            class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-semibold px-8 py-3 text-sm transition-colors"
-          >Contact Support</a>
-        </div>
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/" class="s-logo">SentryDMARC</a>
       </div>
+    </nav>
 
-      <footer class="mt-10 text-center text-xs text-slate-400">SentryDMARC — Fast domain posture checks for security teams.</footer>
+    <main class="nav-offset flex items-center justify-center px-6 py-12 md:py-20" style="min-height:calc(100vh - 72px)">
+      <div class="w-full max-w-lg">
+        <div class="panel rounded-lg p-10 md:p-14 text-center">
+
+          <!-- Status indicator -->
+          <div class="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded"
+               style="background:rgba(20,83,45,0.3);border:1px solid rgba(74,222,128,0.3)">
+            <span class="inline-block w-2 h-2 rounded-full" style="background:#4ade80"></span>
+            <span class="text-xs uppercase tracking-widest" style="font-family:var(--font-mono);color:#bbf7d0">
+              Subscription Active
+            </span>
+          </div>
+
+          <p class="s-tag">Success</p>
+          <h1 class="text-3xl md:text-4xl font-semibold mt-2" style="font-family:var(--font-mono)">
+            You're protected.
+          </h1>
+          <p class="mt-3 text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">
+            Your SentryDMARC subscription is active. Here's what to do next.
+          </p>
+
+          <div class="mt-10 text-left space-y-5">
+            <div class="flex items-start gap-4">
+              <span class="text-xs font-bold mt-0.5 w-5 flex-shrink-0" style="color:var(--accent);font-family:var(--font-mono)">01</span>
+              <div>
+                <p class="text-sm font-semibold" style="font-family:var(--font-mono)">Check your email</p>
+                <p class="text-sm mt-1" style="font-family:var(--font-sans);color:var(--text-secondary)">
+                  Login credentials are on their way — usually within 30 seconds.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4" style="border-top:1px solid var(--border);padding-top:20px">
+              <span class="text-xs font-bold mt-0.5 w-5 flex-shrink-0" style="color:var(--accent);font-family:var(--font-mono)">02</span>
+              <div>
+                <p class="text-sm font-semibold" style="font-family:var(--font-mono)">Log in at sentrydmarc.com/login</p>
+                <p class="text-sm mt-1" style="font-family:var(--font-sans);color:var(--text-secondary)">
+                  Use the credentials from your welcome email to access your dashboard.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4" style="border-top:1px solid var(--border);padding-top:20px">
+              <span class="text-xs font-bold mt-0.5 w-5 flex-shrink-0" style="color:var(--accent);font-family:var(--font-mono)">03</span>
+              <div>
+                <p class="text-sm font-semibold" style="font-family:var(--font-mono)">Add your domain and deploy DNS records</p>
+                <p class="text-sm mt-1" style="font-family:var(--font-sans);color:var(--text-secondary)">
+                  The setup wizard generates the exact records to add to your DNS provider.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="/login" class="s-btn">Go to Login →</a>
+            <a href="/" class="s-btn s-btn--ghost" style="text-decoration:none">Scan Another Domain</a>
+            <a href="mailto:support@sentrydmarc.com" class="s-btn s-btn--ghost" style="text-decoration:none">Support</a>
+          </div>
+
+        </div>
+
+        <p class="mt-8 text-center text-xs" style="color:var(--text-muted);font-family:var(--font-mono)">
+          SentryDMARC — Email security posture monitoring
+        </p>
+      </div>
     </main>
   </body>
 </html>

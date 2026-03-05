@@ -111,13 +111,13 @@ function renderStatusCard(target, key, value) {
 
   target.insertAdjacentHTML(
     "beforeend",
-    `<div class="panel rounded-xl p-5">
+    `<div class="panel rounded-lg p-5">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold text-white">${key.toUpperCase()}</h3>
-        <span class="text-xs uppercase tracking-widest text-slate-300">${checkedLabel}</span>
+        <h3 class="text-base font-semibold" style="font-family:var(--font-mono)">${key.toUpperCase()}</h3>
+        <span class="text-xs uppercase tracking-widest" style="color:var(--text-muted);font-family:var(--font-mono)">${checkedLabel}</span>
       </div>
-      <p class="text-sm text-slate-200">Status: <span class="font-semibold">${statusText}</span></p>
-      <p class="text-sm text-slate-200 mt-1">Presence: <span class="font-semibold">${presenceText}</span></p>
+      <p class="text-sm" style="font-family:var(--font-sans);color:var(--text-secondary)">Status: <span class="font-semibold" style="color:var(--text-primary)">${statusText}</span></p>
+      <p class="text-sm mt-1" style="font-family:var(--font-sans);color:var(--text-secondary)">Presence: <span class="font-semibold" style="color:var(--text-primary)">${presenceText}</span></p>
     </div>`
   );
 }
@@ -189,14 +189,14 @@ function initResultsPage() {
       const issueWrap = byId("issues-list");
       const issues = asIssues(result);
       if (!issues.length) {
-        issueWrap.innerHTML = '<li class="text-slate-300">No issues detected.</li>';
+        issueWrap.innerHTML = '<li class="text-sm" style="color:var(--text-secondary)">No issues detected.</li>';
       } else {
         issueWrap.innerHTML = issues.map((issue, idx) =>
-          `<li class="panel rounded-xl p-4 border ${severityClasses(issue.severity)}">
-            <p class="text-sm uppercase tracking-wider mb-1">${idx + 1}. ${issue.severity}</p>
-            <p class="font-semibold text-white">${issue.title}</p>
-            <p class="text-slate-200 text-sm mt-1">${issue.description}</p>
-            ${issue.remediation ? `<p class="text-slate-300 text-xs mt-2 italic">${issue.remediation}</p>` : ""}
+          `<li class="panel rounded-lg p-4 border ${severityClasses(issue.severity)}">
+            <p class="text-xs uppercase tracking-wider mb-1" style="font-family:var(--font-mono)">${idx + 1}. ${issue.severity}</p>
+            <p class="font-semibold" style="font-family:var(--font-mono)">${issue.title}</p>
+            <p class="text-sm mt-1" style="font-family:var(--font-sans)">${issue.description}</p>
+            ${issue.remediation ? `<p class="text-xs mt-2 italic" style="color:var(--text-secondary);font-family:var(--font-sans)">${issue.remediation}</p>` : ""}
           </li>`
         ).join("");
       }
@@ -205,15 +205,15 @@ function initResultsPage() {
       const recordWrap = byId("records-wrap");
       const records = asRecords(result);
       if (!records.length) {
-        recordWrap.innerHTML = '<p class="text-slate-300">No record changes needed.</p>';
+        recordWrap.innerHTML = '<p class="text-sm" style="color:var(--text-secondary)">No record changes needed.</p>';
       } else {
         recordWrap.innerHTML = records.map((rec, idx) =>
-          `<div class="panel rounded-xl p-4">
-            <div class="flex items-center justify-between gap-3 mb-2">
-              <p class="text-sm uppercase tracking-wider text-slate-300">${rec.label} - Type: ${rec.type} - Name: <code>${rec.name}</code></p>
-              <button class="copy-btn text-xs bg-blue-500 hover:bg-blue-400 text-white px-3 py-1 rounded-md" data-copy="record-${idx}">Copy</button>
+          `<div class="panel rounded-lg p-4">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <p class="text-xs uppercase tracking-wider" style="color:var(--text-muted);font-family:var(--font-mono)">${rec.label} &mdash; Type: ${rec.type} &mdash; Name: <code style="color:var(--accent)">${rec.name}</code></p>
+              <button class="copy-btn" data-copy="record-${idx}">Copy</button>
             </div>
-            <code id="record-${idx}" class="block whitespace-pre-wrap break-all text-sm text-slate-100">${rec.value}</code>
+            <code id="record-${idx}" class="block whitespace-pre-wrap break-all text-sm" style="color:var(--text-secondary);font-family:var(--font-mono)">${rec.value}</code>
           </div>`
         ).join("");
 

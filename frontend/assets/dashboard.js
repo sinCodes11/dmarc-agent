@@ -26,12 +26,12 @@ async function loadDashboard() {
       byId("empty-state").classList.add("hidden");
       wrap.innerHTML = domains.map((domain) => {
         const risk = String(domain.current_risk_level || "UNKNOWN").toUpperCase();
-        return `<button data-domain-id="${domain.id}" class="panel rounded-xl p-5 text-left hover:border-blue-400/60 transition-colors">
+        return `<button data-domain-id="${domain.id}" class="panel domain-card rounded-lg p-5 text-left w-full">
           <div class="flex items-center justify-between gap-3">
-            <h3 class="text-lg font-semibold">${domain.domain}</h3>
-            <span class="px-3 py-1 rounded-lg text-xs font-semibold ${riskBadgeClass(risk)}">${risk}</span>
+            <h3 class="text-base font-semibold" style="font-family:var(--font-mono)">${domain.domain}</h3>
+            <span class="px-3 py-1 rounded text-xs font-semibold ${riskBadgeClass(risk)}" style="font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em">${risk}</span>
           </div>
-          <p class="text-slate-300 text-sm mt-3">Last scanned: ${fmtDate(domain.last_scanned_at)}</p>
+          <p class="text-xs mt-3" style="font-family:var(--font-mono);color:var(--text-muted)">Last scanned: ${fmtDate(domain.last_scanned_at)}</p>
         </button>`;
       }).join("");
 

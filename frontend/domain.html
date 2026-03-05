@@ -4,7 +4,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-K03JBNND58"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);} 
+      function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-K03JBNND58');
     </script>
@@ -15,61 +15,83 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/assets/style.css" />
   </head>
-  <body class="text-slate-100">
-    <main class="max-w-6xl mx-auto px-6 py-10 md:py-14 space-y-6">
-      <div class="flex items-center justify-between gap-3">
-        <a href="/dashboard" class="text-blue-300 hover:text-blue-200 text-sm">&larr; Dashboard</a>
-        <button id="logout-btn" class="rounded-xl border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white px-4 py-2 text-sm">Logout</button>
-      </div>
+  <body>
 
-      <header class="panel rounded-2xl p-6 md:p-8">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+    <nav class="s-nav">
+      <div class="s-nav__inner">
+        <a href="/dashboard" class="s-logo">SentryDMARC</a>
+        <div class="flex items-center gap-4">
+          <a href="/dashboard" class="s-nav__link hide-mobile">Dashboard</a>
+          <a href="/settings" class="s-nav__link hide-mobile">Settings</a>
+          <button id="logout-btn" class="s-nav__link">Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="nav-offset max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-6">
+
+      <header class="panel rounded-lg p-6 md:p-8">
+        <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 id="domain-name" class="text-3xl md:text-4xl font-semibold">Domain</h1>
-            <p class="text-slate-300 text-sm mt-2">Last scanned: <span id="last-scanned">Never</span></p>
+            <p class="s-tag">Domain Security</p>
+            <h1 id="domain-name" class="text-3xl md:text-4xl font-semibold mt-1"
+                style="font-family:var(--font-mono)">Domain</h1>
+            <p class="mt-2 text-xs" style="color:var(--text-muted);font-family:var(--font-mono)">
+              Last scanned: <span id="last-scanned">Never</span>
+            </p>
           </div>
-          <span id="risk-badge" class="px-4 py-2 rounded-xl text-sm font-semibold">UNKNOWN</span>
+          <span id="risk-badge" class="px-4 py-2 rounded text-xs font-semibold risk-UNKNOWN"
+                style="font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">
+            UNKNOWN
+          </span>
         </div>
       </header>
 
-      <p id="domain-error" class="hidden text-red-400 text-sm"></p>
+      <p id="domain-error" class="hidden text-xs" style="color:#fca5a5;font-family:var(--font-mono)"></p>
 
+      <!-- Auth Status -->
       <section>
-        <h2 class="text-2xl font-semibold mb-3">Authentication Status</h2>
-        <div id="status-grid" class="grid md:grid-cols-3 gap-4"></div>
+        <p class="s-tag">Authentication Status</p>
+        <div id="status-grid" class="mt-2 grid md:grid-cols-3 gap-4"></div>
       </section>
 
+      <!-- Issues -->
       <section>
-        <h2 class="text-2xl font-semibold mb-3">Detected Issues</h2>
-        <ol id="issues-list" class="space-y-3"></ol>
+        <p class="s-tag">Detected Issues</p>
+        <ol id="issues-list" class="mt-2 space-y-3"></ol>
       </section>
 
+      <!-- Records -->
       <section>
-        <h2 class="text-2xl font-semibold mb-3">Recommended DNS Records</h2>
-        <div id="records-wrap" class="space-y-3"></div>
+        <p class="s-tag">Recommended DNS Records</p>
+        <div id="records-wrap" class="mt-2 space-y-3"></div>
       </section>
 
-      <section class="panel rounded-2xl p-6">
-        <div class="flex flex-wrap items-center gap-3">
-          <button id="rescan-btn" class="glow-btn rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-3">Re-scan Now</button>
-          <button id="delete-btn" class="rounded-xl border border-red-500/50 hover:border-red-400 text-red-300 hover:text-red-200 font-semibold px-6 py-3">Remove Domain</button>
+      <!-- Actions -->
+      <section class="panel rounded-lg p-6">
+        <p class="s-tag">Actions</p>
+        <div class="flex flex-wrap gap-3 mt-2">
+          <button id="rescan-btn" class="s-btn">Re-scan Now</button>
+          <button id="delete-btn" class="s-btn s-btn--danger">Remove Domain</button>
         </div>
       </section>
 
-      <section class="panel rounded-2xl p-6">
-        <h2 class="text-2xl font-semibold mb-3">Scan History</h2>
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
+      <!-- Scan History -->
+      <section class="panel rounded-lg p-6">
+        <p class="s-tag">Scan History</p>
+        <div class="overflow-x-auto mt-2">
+          <table class="min-w-full text-xs" style="font-family:var(--font-mono)">
             <thead>
-              <tr class="text-slate-300 border-b border-slate-700">
-                <th class="text-left py-2 pr-4">Date</th>
-                <th class="text-left py-2 pr-4">Risk</th>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th class="text-left py-2 pr-6" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Date</th>
+                <th class="text-left py-2" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Risk</th>
               </tr>
             </thead>
             <tbody id="history-body"></tbody>
           </table>
         </div>
       </section>
+
     </main>
 
     <script src="/assets/app.js"></script>
@@ -99,10 +121,7 @@
 
       async function loadDomain() {
         if (!requireAuth()) return;
-        if (!domainId) {
-          showError('domain-error', 'Missing domain id');
-          return;
-        }
+        if (!domainId) { showError('domain-error', 'Missing domain id'); return; }
 
         try {
           const [domainData, scans] = await Promise.all([
@@ -115,7 +134,8 @@
 
           const risk = String(domainData.current_risk_level || 'UNKNOWN').toUpperCase();
           const badge = byId('risk-badge');
-          badge.className = `px-4 py-2 rounded-xl text-sm font-semibold ${riskBadgeClass(risk)}`;
+          badge.className = `px-4 py-2 rounded text-xs font-semibold risk-${risk}`;
+          badge.style.cssText = 'font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em';
           badge.textContent = `${risk} RISK`;
 
           const result = domainData.latest_scan_result || {};
@@ -129,33 +149,33 @@
 
           const issues = asIssues(result);
           byId('issues-list').innerHTML = issues.length
-            ? issues.map((issue, idx) => `<li class="panel rounded-xl p-4 border ${severityClasses(issue.severity)}">
-                <p class="text-sm uppercase tracking-wider mb-1">${idx + 1}. ${issue.severity}</p>
-                <p class="font-semibold text-white">${issue.title}</p>
-                <p class="text-slate-200 text-sm mt-1">${issue.description}</p>
-                ${issue.remediation ? `<p class="text-slate-300 text-xs mt-2 italic">${issue.remediation}</p>` : ''}
+            ? issues.map((issue, idx) => `<li class="panel rounded-lg p-4 border ${severityClasses(issue.severity)}">
+                <p class="text-xs uppercase tracking-wider mb-1" style="font-family:var(--font-mono)">${idx + 1}. ${issue.severity}</p>
+                <p class="font-semibold" style="font-family:var(--font-mono)">${issue.title}</p>
+                <p class="text-sm mt-1" style="font-family:var(--font-sans)">${issue.description}</p>
+                ${issue.remediation ? `<p class="text-xs mt-2 italic" style="color:var(--text-secondary);font-family:var(--font-sans)">${issue.remediation}</p>` : ''}
               </li>`).join('')
-            : '<li class="text-slate-300">No issues detected.</li>';
+            : '<li class="text-sm" style="color:var(--text-secondary)">No issues detected.</li>';
 
           const records = asRecords(result);
           byId('records-wrap').innerHTML = records.length
-            ? records.map((rec, idx) => `<div class="panel rounded-xl p-4">
-                <div class="flex items-center justify-between gap-3 mb-2">
-                  <p class="text-sm uppercase tracking-wider text-slate-300">${rec.label} - Type: ${rec.type} - Name: <code>${rec.name}</code></p>
-                  <button class="copy-btn text-xs bg-blue-500 hover:bg-blue-400 text-white px-3 py-1 rounded-md" data-copy="record-${idx}">Copy</button>
+            ? records.map((rec, idx) => `<div class="panel rounded-lg p-4">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                  <p class="text-xs uppercase tracking-wider" style="color:var(--text-muted);font-family:var(--font-mono)">${rec.label} &mdash; Type: ${rec.type} &mdash; Name: <code style="color:var(--accent)">${rec.name}</code></p>
+                  <button class="copy-btn" data-copy="record-${idx}">Copy</button>
                 </div>
-                <code id="record-${idx}" class="block whitespace-pre-wrap break-all text-sm text-slate-100">${rec.value}</code>
+                <code id="record-${idx}" class="block whitespace-pre-wrap break-all text-sm" style="color:var(--text-secondary);font-family:var(--font-mono)">${rec.value}</code>
               </div>`).join('')
-            : '<p class="text-slate-300">No record changes needed.</p>';
+            : '<p class="text-sm" style="color:var(--text-secondary)">No record changes needed.</p>';
 
           bindCopyButtons();
 
           byId('history-body').innerHTML = scans.length
-            ? scans.map((scan) => `<tr class="border-b border-slate-800">
-                <td class="py-2 pr-4 text-slate-200">${fmtDate(scan.created_at)}</td>
-                <td class="py-2 pr-4"><span class="px-2 py-1 rounded text-xs font-semibold ${riskBadgeClass(scan.risk_level)}">${scan.risk_level}</span></td>
+            ? scans.map((scan) => `<tr class="table-row">
+                <td class="py-2 pr-6" style="color:var(--text-secondary)">${fmtDate(scan.created_at)}</td>
+                <td class="py-2"><span class="px-2 py-1 rounded text-xs font-semibold ${riskBadgeClass(scan.risk_level)}">${scan.risk_level}</span></td>
               </tr>`).join('')
-            : '<tr><td colspan="2" class="py-2 text-slate-300">No scans yet.</td></tr>';
+            : '<tr><td colspan="2" class="py-3" style="color:var(--text-muted)">No scans yet.</td></tr>';
         } catch (err) {
           showError('domain-error', err.message || 'Failed to load domain');
         }
