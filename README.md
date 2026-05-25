@@ -1,5 +1,15 @@
 # dmarc-saas
 
+<div align="center">
+  <img src="assets/logo.svg" width="200" height="200" />
+</div>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square" alt="Python">
+  <img src="https://img.shields.io/badge/DMARC-Email_Security-4fc3f7?style=flat-square" alt="DMARC">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
+</p>
+
 Web-based SaaS wrapper for `dmarc-agent`, built with FastAPI + static HTML/Tailwind frontend.
 
 ## Project Structure
