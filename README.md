@@ -1,4 +1,4 @@
-# dmarc-saas
+# dmarc-agent
 
 <div align="center">
   <img src="assets/banner.svg" width="100%" />
@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
 </p>
 
-Web-based SaaS wrapper for `dmarc-agent`, built with FastAPI + static HTML/Tailwind frontend.
+CLI tool and SaaS wrapper for auditing and enforcing email authentication — SPF, DKIM, and DMARC — built with FastAPI and a static HTML/Tailwind frontend.
 
 ## Project Structure
 
@@ -63,17 +63,21 @@ uvicorn backend.main:app --reload
 
 ## Environment Variables
 
-- `RESEND_API_KEY`
-- `FROM_EMAIL`
-- `SCAN_CACHE_TTL_SECONDS` (default `3600`)
-- `ALLOWED_ORIGINS` (comma-separated, `*` for MVP)
+| Variable | Description |
+|----------|-------------|
+| `RESEND_API_KEY` | Resend email API key |
+| `FROM_EMAIL` | Sender address for reports |
+| `SCAN_CACHE_TTL_SECONDS` | Cache TTL (default: `3600`) |
+| `ALLOWED_ORIGINS` | CORS origins (comma-separated, `*` for dev) |
 
 ## API Endpoints
 
-- `POST /api/scan`
-- `GET /api/scan/{scan_id}`
-- `POST /api/scan/{scan_id}/report`
-- `GET /health`
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/scan` | Initiate a domain scan |
+| `GET /api/scan/{scan_id}` | Fetch scan results |
+| `POST /api/scan/{scan_id}/report` | Email the report |
+| `GET /health` | Health check |
 
 ## Railway Deployment
 
@@ -88,6 +92,12 @@ uvicorn backend.main:app --host 0.0.0.0 --port $PORT
 
 ## Notes
 
-- MVP uses in-memory cache only (no database/Redis).
-- No authentication in this version.
+- In-memory scan cache only — no database required for MVP.
 - `dmarc_agent` source is vendored in `dmarc_agent_src/` for deploy portability.
+- No auth in this version; add API key middleware before exposing publicly.
+
+## Author
+
+**Daniel Gregg Jr**
+- Portfolio: [daniel-eportfolio.web.app](https://daniel-eportfolio.web.app)
+- LinkedIn: [linkedin.com/in/daniel-sin-1881ske89](https://linkedin.com/in/daniel-sin-1881ske89)
