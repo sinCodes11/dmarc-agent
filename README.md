@@ -1,8 +1,13 @@
-# dmarc-agent
-
 <div align="center">
-  <img src="assets/banner.svg" width="100%" />
+  <img src="assets/banner.svg" width="100%"/>
 </div>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square" alt="python">
+  <img src="https://img.shields.io/badge/email-SPF%20%2F%20DKAM%20%2F%20DMARC-ff0033?style=flat-square" alt="email">
+  <img src="https://img.shields.io/badge/service-FastAPI-009688?style=flat-square" alt="service">
+</p>
+
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square" alt="Python">
